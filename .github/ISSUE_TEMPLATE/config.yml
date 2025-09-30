@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 질문/지원이 필요하신가요?
+    url: https://github.com/ipia-labs/ipia-order/discussions
+    about: 일반 문의는 Discussions를 이용해주세요.
+
+
