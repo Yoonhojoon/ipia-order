@@ -123,36 +123,31 @@ class MemberServiceImplTest {
         }
 
         @Test
-        @DisplayName("존재하지 않는 ID로 멤버 조회 시 빈 Optional 반환")
+        @DisplayName("존재하지 않는 ID로 멤버 조회 시 MemberHandler 발생")
         void findById_Fail_NotFound() {
             // given
             Long nonExistentId = 999L;
             given(memberRepository.findById(nonExistentId))
                     .willReturn(java.util.Optional.empty());
 
-            // when
-            var result = memberService.findById(nonExistentId);
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findById(nonExistentId))
+                    .isInstanceOf(MemberHandler.class);
             
             verify(memberRepository).findById(nonExistentId);
         }
 
         @Test
-        @DisplayName("null ID로 멤버 조회 시 예외 발생")
+        @DisplayName("null ID로 멤버 조회 시 MemberHandler 발생 (레포 미호출)")
         void findById_Fail_NullId() {
             // given
             Long nullId = null;
-            given(memberRepository.findById(nullId))
-                    .willThrow(new org.springframework.dao.InvalidDataAccessApiUsageException("The given id must not be null"));
 
             // when & then
             assertThatThrownBy(() -> memberService.findById(nullId))
-                    .isInstanceOf(org.springframework.dao.InvalidDataAccessApiUsageException.class)
-                    .hasMessageContaining("The given id must not be null");
+                    .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findById(nullId);
+            verify(memberRepository, never()).findById(any());
         }
 
         @Test
@@ -175,52 +170,38 @@ class MemberServiceImplTest {
         }
 
         @Test
-        @DisplayName("존재하지 않는 이메일로 멤버 조회 시 빈 Optional 반환")
+        @DisplayName("존재하지 않는 이메일로 멤버 조회 시 MemberHandler 발생")
         void findByEmail_Fail_NotFound() {
             // given
             String nonExistentEmail = "nonexistent@example.com";
             given(memberRepository.findByEmail(nonExistentEmail))
                     .willReturn(java.util.Optional.empty());
 
-            // when
-            var result = memberService.findByEmail(nonExistentEmail);
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findByEmail(nonExistentEmail))
+                    .isInstanceOf(MemberHandler.class);
             
             verify(memberRepository).findByEmail(nonExistentEmail);
         }
 
         @Test
-        @DisplayName("null 이메일로 멤버 조회 시 빈 Optional 반환")
+        @DisplayName("null 이메일로 멤버 조회 시 MemberHandler 발생 (레포 미호출)")
         void findByEmail_Fail_NullEmail() {
-            // given
-            given(memberRepository.findByEmail(null))
-                    .willReturn(java.util.Optional.empty());
-
-            // when
-            var result = memberService.findByEmail(null);
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findByEmail(null))
+                    .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findByEmail(null);
+            verify(memberRepository, never()).findByEmail(any());
         }
 
         @Test
-        @DisplayName("빈 문자열 이메일로 멤버 조회 시 빈 Optional 반환")
+        @DisplayName("빈 문자열 이메일로 멤버 조회 시 MemberHandler 발생 (레포 미호출)")
         void findByEmail_Fail_EmptyEmail() {
-            // given
-            given(memberRepository.findByEmail(""))
-                    .willReturn(java.util.Optional.empty());
-
-            // when
-            var result = memberService.findByEmail("");
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findByEmail(""))
+                    .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findByEmail("");
+            verify(memberRepository, never()).findByEmail(any());
         }
 
         @Test
@@ -314,51 +295,33 @@ class MemberServiceImplTest {
         }
 
         @Test
-        @DisplayName("null 이름으로 멤버 조회 시 빈 리스트 반환")
+        @DisplayName("null 이름으로 멤버 조회 시 MemberHandler 발생 (레포 미호출)")
         void findByName_Fail_NullName() {
-            // given
-            given(memberRepository.findByName(null))
-                    .willReturn(java.util.List.of());
-
-            // when
-            var result = memberService.findByName(null);
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findByName(null))
+                    .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findByName(null);
+            verify(memberRepository, never()).findByName(any());
         }
 
         @Test
-        @DisplayName("빈 문자열 이름으로 멤버 조회 시 빈 리스트 반환")
+        @DisplayName("빈 문자열 이름으로 멤버 조회 시 MemberHandler 발생 (레포 미호출)")
         void findByName_Fail_EmptyName() {
-            // given
-            given(memberRepository.findByName(""))
-                    .willReturn(java.util.List.of());
-
-            // when
-            var result = memberService.findByName("");
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findByName(""))
+                    .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findByName("");
+            verify(memberRepository, never()).findByName(any());
         }
 
         @Test
-        @DisplayName("공백만 있는 이름으로 멤버 조회 시 빈 리스트 반환")
+        @DisplayName("공백만 있는 이름으로 멤버 조회 시 MemberHandler 발생 (레포 미호출)")
         void findByName_Fail_BlankName() {
-            // given
-            given(memberRepository.findByName("   "))
-                    .willReturn(java.util.List.of());
-
-            // when
-            var result = memberService.findByName("   ");
-
-            // then
-            assertThat(result).isEmpty();
+            // when & then
+            assertThatThrownBy(() -> memberService.findByName("   "))
+                    .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findByName("   ");
+            verify(memberRepository, never()).findByName(any());
         }
 
         @Test

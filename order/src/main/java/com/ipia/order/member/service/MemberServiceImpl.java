@@ -35,12 +35,22 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public Optional<Member> findById(Long id) {
-        return memberRepository.findById(id);
+        if (id == null) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+        return Optional.of(member);
     }
 
     @Override
     public Optional<Member> findByEmail(String email) {
-        return memberRepository.findByEmail(email);
+        if (email == null || email.isBlank()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+        return Optional.of(member);
     }
 
     @Override
@@ -50,6 +60,9 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public List<Member> findByName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
         return memberRepository.findByName(name);
     }
 }
