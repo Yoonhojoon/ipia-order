@@ -1,4 +1,9 @@
 package com.ipia.order.member.repository;
 
-public interface MemberRepostiory {
+import com.ipia.order.member.domain.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface MemberRepostiory extends JpaRepository<Member, Long> {
 }
