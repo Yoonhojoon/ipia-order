@@ -1,21 +1,33 @@
 package com.ipia.order.member.service;
 
 import com.ipia.order.member.domain.Member;
-import com.ipia.order.member.repository.MemberRepostiory;
+import com.ipia.order.member.repository.MemberRepository;
+import com.ipia.order.common.exception.member.MemberHandler;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MemberServiceImpl implements MemberService {
 
-    private MemberRepostiory memberRepostiory;
+    private final MemberRepository memberRepository;
 
-    public MemberServiceImpl(MemberRepostiory memberRepostiory) {
-        this.memberRepostiory = memberRepostiory;
+    public MemberServiceImpl(MemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
     }
 
     @Override
     public Member signup(String name, String email) {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("아직 구현되지 않았습니다.");
+        // 이메일 중복 체크
+        if (memberRepository.existsByEmail(email)) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_ALREADY_EXISTS);
+        }
+        
+        // 회원 생성 및 저장
+        Member member = Member.builder()
+                .name(name)
+                .email(email)
+                .build();
+                
+        return memberRepository.save(member);
     }
 }
