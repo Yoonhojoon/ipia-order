@@ -5,6 +5,8 @@ import com.ipia.order.member.repository.MemberRepository;
 import com.ipia.order.common.exception.member.MemberHandler;
 import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class MemberServiceImpl implements MemberService {
@@ -29,5 +31,38 @@ public class MemberServiceImpl implements MemberService {
                 .build();
                 
         return memberRepository.save(member);
+    }
+
+    @Override
+    public Optional<Member> findById(Long id) {
+        if (id == null) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+        return Optional.of(member);
+    }
+
+    @Override
+    public Optional<Member> findByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+        return Optional.of(member);
+    }
+
+    @Override
+    public List<Member> findAll() {
+        return memberRepository.findAll();
+    }
+
+    @Override
+    public List<Member> findByName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        return memberRepository.findByName(name);
     }
 }
