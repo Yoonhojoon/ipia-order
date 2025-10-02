@@ -65,4 +65,14 @@ public class MemberServiceImpl implements MemberService {
         }
         return memberRepository.findByName(name);
     }
+
+    @Override
+    public Member updateNickname(Long id, String newNickname) {
+        throw new UnsupportedOperationException("updateNickname is not implemented yet");
+    }
+
+    @Override
+    public void updatePassword(Long id, String currentPassword, String newPassword) {
+        throw new UnsupportedOperationException("updatePassword is not implemented yet");
+    }
 }

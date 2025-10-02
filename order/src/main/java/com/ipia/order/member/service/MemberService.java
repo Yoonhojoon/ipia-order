@@ -33,4 +33,14 @@ public interface MemberService {
      * 이름으로 멤버 조회
      */
     List<Member> findByName(String name);
+
+    /**
+     * 닉네임(이름) 변경
+     */
+    Member updateNickname(Long id, String newNickname);
+
+    /**
+     * 비밀번호 변경
+     */
+    void updatePassword(Long id, String currentPassword, String newPassword);
 }

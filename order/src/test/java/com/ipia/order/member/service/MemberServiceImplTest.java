@@ -387,4 +387,155 @@ class MemberServiceImplTest {
             verify(memberRepository).findByName(name);
             }
         }
+
+    @Nested
+    @DisplayName("멤버 수정 테스트")
+    class MemberUpdateTest {
+
+        @Test
+        @DisplayName("닉네임 변경 성공")
+        void updateNickname_Success() {
+            // given
+            Long memberId = 1L;
+            String newNickname = "새로운닉네임";
+            Member existingMember = Member.builder()
+                    .name("기존닉네임")
+                    .email("test@example.com")
+                    .build();
+            
+            given(memberRepository.findById(memberId))
+                    .willReturn(java.util.Optional.of(existingMember));
+            given(memberRepository.save(any(Member.class)))
+                    .willReturn(existingMember);
+
+            // when
+            Member result = memberService.updateNickname(memberId, newNickname);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getName()).isEqualTo(newNickname);
+            verify(memberRepository).findById(memberId);
+            verify(memberRepository).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("닉네임 변경 - 존재하지 않는 ID 시 MemberHandler")
+        void updateNickname_Fail_NotFound() {
+            // given
+            Long nonExistentId = 999L;
+            given(memberRepository.findById(nonExistentId))
+                    .willReturn(java.util.Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> memberService.updateNickname(nonExistentId, "새닉네임"))
+                    .isInstanceOf(MemberHandler.class);
+            
+            verify(memberRepository).findById(nonExistentId);
+            verify(memberRepository, never()).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("닉네임 변경 - null ID 시 MemberHandler")
+        void updateNickname_Fail_NullId() {
+            // when & then
+            assertThatThrownBy(() -> memberService.updateNickname(null, "새닉네임"))
+                    .isInstanceOf(MemberHandler.class);
+            
+            verify(memberRepository, never()).findById(any());
+            verify(memberRepository, never()).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("닉네임 변경 - 공백 닉네임 시 MemberHandler")
+        void updateNickname_Fail_BlankNickname() {
+            // given
+            Long memberId = 1L;
+            given(memberRepository.findById(memberId))
+                    .willReturn(java.util.Optional.of(validMember));
+
+            // when & then
+            assertThatThrownBy(() -> memberService.updateNickname(memberId, "   "))
+                    .isInstanceOf(MemberHandler.class);
+            
+            verify(memberRepository).findById(memberId);
+            verify(memberRepository, never()).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("비밀번호 변경 성공")
+        void updatePassword_Success() {
+            // given
+            Long memberId = 1L;
+            String currentPassword = "currentPass123!";
+            String newPassword = "newPass123!";
+            Member existingMember = Member.builder()
+                    .name("홍길동")
+                    .email("test@example.com")
+                    .build();
+            
+            given(memberRepository.findById(memberId))
+                    .willReturn(java.util.Optional.of(existingMember));
+            given(memberRepository.save(any(Member.class)))
+                    .willReturn(existingMember);
+
+            // when
+            memberService.updatePassword(memberId, currentPassword, newPassword);
+
+            // then
+            verify(memberRepository).findById(memberId);
+            verify(memberRepository).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("비밀번호 변경 - 존재하지 않는 ID 시 MemberHandler")
+        void updatePassword_Fail_NotFound() {
+            // given
+            Long nonExistentId = 999L;
+            given(memberRepository.findById(nonExistentId))
+                    .willReturn(java.util.Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> memberService.updatePassword(nonExistentId, "current", "newPass123!"))
+                    .isInstanceOf(MemberHandler.class);
+            
+            verify(memberRepository).findById(nonExistentId);
+            verify(memberRepository, never()).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("비밀번호 변경 - 현재 비밀번호 불일치 시 MemberHandler")
+        void updatePassword_Fail_CurrentMismatch() {
+            // given
+            Long memberId = 1L;
+            String wrongCurrentPassword = "wrongPassword";
+            String newPassword = "newPass123!";
+            given(memberRepository.findById(memberId))
+                    .willReturn(java.util.Optional.of(validMember));
+
+            // when & then
+            assertThatThrownBy(() -> memberService.updatePassword(memberId, wrongCurrentPassword, newPassword))
+                    .isInstanceOf(MemberHandler.class);
+            
+            verify(memberRepository).findById(memberId);
+            verify(memberRepository, never()).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("비밀번호 변경 - 새 비밀번호 정책 위반")
+        void updatePassword_Fail_NewPolicyViolation() {
+            // given
+            Long memberId = 1L;
+            String currentPassword = "currentPass123!";
+            String weakNewPassword = "123"; // 너무 짧음
+            given(memberRepository.findById(memberId))
+                    .willReturn(java.util.Optional.of(validMember));
+
+            // when & then
+            assertThatThrownBy(() -> memberService.updatePassword(memberId, currentPassword, weakNewPassword))
+                    .isInstanceOf(MemberHandler.class);
+            
+            verify(memberRepository).findById(memberId);
+            verify(memberRepository, never()).save(any(Member.class));
+        }
+    }
 }
