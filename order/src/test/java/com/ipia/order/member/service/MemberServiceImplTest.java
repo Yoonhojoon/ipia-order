@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
+import com.ipia.order.member.repository.MemberRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.ipia.order.member.domain.Member;
-import com.ipia.order.member.repository.MemberRepostiory;
+import com.ipia.order.member.repository.MemberRepository;
 import com.ipia.order.common.exception.member.MemberHandler;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,7 +22,7 @@ import com.ipia.order.common.exception.member.MemberHandler;
 class MemberServiceImplTest {
 
     @Mock
-    private MemberRepostiory memberRepository;
+    private MemberRepository memberRepository;
 
     @InjectMocks
     private MemberServiceImpl memberService;
@@ -63,15 +64,16 @@ class MemberServiceImplTest {
         // given
         String name = "홍길동";
         String email = "hong@example.com";
-        
-        given(memberRepository.save(any(Member.class)))
-                .willThrow(new MemberHandler(com.ipia.order.common.exception.member.status.MemberErrorStatus.MEMBER_ALREADY_EXISTS));
+
+        given(memberRepository.existsByEmail(email))
+                .willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> memberService.signup(name, email))
                 .isInstanceOf(MemberHandler.class);
-        
-        verify(memberRepository).save(any(Member.class));
+
+        verify(memberRepository).existsByEmail(email);
+        verify(memberRepository, never()).save(any(Member.class));
     }
 
     @Test

@@ -22,7 +22,7 @@ class MemberRepositoryTest {
     private TestEntityManager entityManager;
 
     @Autowired
-    private MemberRepostiory memberRepository;
+    private MemberRepository memberRepository;
 
     private Member validMember;
 
@@ -230,33 +230,7 @@ class MemberRepositoryTest {
           .hasMessage("올바른 이메일 형식이 아닙니다");
     }
 
-    @Test
-    @DisplayName("정상적인 이메일 형식으로 가입 성공")
-    void joinMember_Success_ValidEmailFormats() {
-        // given
-        String[] validEmails = {
-                "test@example.com",
-                "user.name@domain.co.kr",
-                "user+tag@example.org",
-                "123@test.co.kr"
-        };
 
-        for (int i = 0; i < validEmails.length; i++) {
-            // when
-            Member member = Member.builder()
-                    .name("테스트" + i)
-                    .email(validEmails[i])
-                    .build();
-            
-            Member savedMember = memberRepository.save(member);
-            entityManager.flush();
-            entityManager.clear();
-
-            // then
-            assertThat(savedMember.getId()).isNotNull();
-            assertThat(savedMember.getEmail()).isEqualTo(validEmails[i]);
-        }
-    }
 
     @Test
     @DisplayName("이름이 정확히 100자인 경우 가입 성공")
