@@ -1,7 +1,16 @@
 package com.ipia.order.member.domain;
 
+import org.springframework.util.StringUtils;
+
 import com.ipia.order.common.entity.BaseEntity;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,8 +36,32 @@ public class Member extends BaseEntity {
 
     @Builder
     private Member(String name, String email) {
+        validateName(name);
+        validateEmail(email);
         this.name = name;
         this.email = email;
+    }
+
+    private void validateName(String name) {
+        if (!StringUtils.hasText(name)) {
+            throw new IllegalArgumentException("회원 이름은 필수입니다");
+        }
+        if (name.length() > 100) {
+            throw new IllegalArgumentException("회원 이름은 100자를 초과할 수 없습니다");
+        }
+    }
+
+    private void validateEmail(String email) {
+        if (!StringUtils.hasText(email)) {
+            throw new IllegalArgumentException("이메일은 필수입니다");
+        }
+        if (email.length() > 200) {
+            throw new IllegalArgumentException("이메일은 200자를 초과할 수 없습니다");
+        }
+        // 간단한 이메일 형식 검증
+        if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다");
+        }
     }
 
 }
