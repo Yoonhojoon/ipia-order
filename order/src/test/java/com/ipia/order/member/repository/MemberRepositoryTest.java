@@ -534,4 +534,52 @@ class MemberRepositoryTest {
             assertThat(foundMembers).isEmpty();
             }
         }
+
+    @Nested
+    @DisplayName("멤버 수정 테스트")
+    class MemberUpdateTest {
+
+        @Test
+        @DisplayName("닉네임(이름) 변경 성공")
+        void updateName_Success() {
+            // given
+            Member saved = memberRepository.save(validMember);
+            entityManager.flush();
+
+            // when: 네이티브 업데이트로 이름 변경 (엔티티에 setter가 없기 때문)
+            entityManager.getEntityManager()
+                    .createNativeQuery("UPDATE members SET name = :name WHERE id = :id")
+                    .setParameter("name", "임꺽정")
+                    .setParameter("id", saved.getId())
+                    .executeUpdate();
+            entityManager.clear();
+
+            // then
+            var found = memberRepository.findById(saved.getId());
+            assertThat(found).isPresent();
+            assertThat(found.get().getName()).isEqualTo("임꺽정");
+        }
+
+        @Test
+        @DisplayName("이메일을 중복 값으로 변경하면 제약 위반")
+        void updateEmail_Fail_Duplicate() {
+            // given: 두 멤버 저장
+            Member m1 = memberRepository.save(validMember);
+            Member m2 = memberRepository.save(Member.builder()
+                    .name("김철수")
+                    .email("kim@example.com")
+                    .build());
+            entityManager.flush();
+
+            // when & then: m2의 이메일을 m1의 이메일로 변경 시도 -> Unique 제약 위반
+            assertThatThrownBy(() -> {
+                entityManager.getEntityManager()
+                        .createNativeQuery("UPDATE members SET email = :email WHERE id = :id")
+                        .setParameter("email", m1.getEmail())
+                        .setParameter("id", m2.getId())
+                        .executeUpdate();
+                entityManager.flush();
+            }).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        }
+    }
 }
