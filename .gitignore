@@ -1,11 +1,15 @@
-HELP.md
+# IDE files
+.idea/
+.vscode/
+
+# Gradle
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### STS ###
+# STS
 .apt_generated
 .classpath
 .factorypath
@@ -17,8 +21,7 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
-### IntelliJ IDEA ###
-.idea
+# IntelliJ IDEA
 *.iws
 *.iml
 *.ipr
@@ -26,15 +29,13 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 
-### VS Code ###
-.vscode/
+# Environment files
 .env.dev
-
 .env.*

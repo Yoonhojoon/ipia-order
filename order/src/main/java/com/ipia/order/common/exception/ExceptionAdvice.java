@@ -52,5 +52,16 @@ public class ExceptionAdvice {
         return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, exception.getMessage());
     }
 
+    /**
+     * IllegalArgumentException 처리 - 잘못된 인수
+     * @param exception IllegalArgumentException
+     * @return ApiResponse - BAD_REQUEST
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<String>> handleIllegalArgumentException(IllegalArgumentException exception) {
+        log.error("ARG_:CTRL:ILLEGAL:::IllegalArgumentException msg({})", exception.getMessage());
+        return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, exception.getMessage());
+    }
+
     
 }
