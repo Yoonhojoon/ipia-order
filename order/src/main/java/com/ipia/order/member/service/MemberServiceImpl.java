@@ -69,7 +69,7 @@ public class MemberServiceImpl implements MemberService {
     @Override
     public Member updateNickname(Long id, String newNickname) {
         if (id == null) {
-            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+            throw new MemberHandler(MemberErrorStatus.INVALID_INPUT);
         }
 
         Member member = memberRepository.findById(id)
