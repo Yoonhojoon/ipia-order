@@ -64,4 +64,12 @@ public class Member extends BaseEntity {
         }
     }
 
+    /**
+     * 닉네임(이름) 변경
+     */
+    public void changeName(String newName) {
+        validateName(newName);
+        this.name = newName;
+    }
+
 }
