@@ -51,7 +51,7 @@ class   MemberControllerIntegrationTest {
         String jsonRequest = objectMapper.writeValueAsString(request);
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
         when(memberService.signup(anyString(), anyString())).thenReturn(mockMember);
 
         // When & Then
@@ -104,7 +104,7 @@ class   MemberControllerIntegrationTest {
         String jsonRequest = objectMapper.writeValueAsString(request);
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
         when(memberService.signup(anyString(), anyString())).thenReturn(mockMember);
 
         // When & Then
@@ -122,7 +122,7 @@ class   MemberControllerIntegrationTest {
         Long memberId = 1L;
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
         when(memberService.findById(anyLong())).thenReturn(Optional.of(mockMember));
 
         // When & Then
@@ -139,7 +139,7 @@ class   MemberControllerIntegrationTest {
         String name = "홍길동";
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
         when(memberService.findByName(anyString())).thenReturn(Arrays.asList(mockMember));
 
         // When & Then

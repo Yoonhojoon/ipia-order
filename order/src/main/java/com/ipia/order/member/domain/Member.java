@@ -126,7 +126,7 @@ public class Member extends BaseEntity {
      * @param passwordEncoder 비밀번호 인코더
      * @return 비밀번호 일치 여부
      */
-    public boolean checkPassword(String rawPassword, com.ipia.order.common.util.PasswordEncoder passwordEncoder) {
+    public boolean checkPassword(String rawPassword, com.ipia.order.common.util.PasswordEncoderUtil passwordEncoder) {
         return passwordEncoder.matches(rawPassword, this.password);
     }
 
