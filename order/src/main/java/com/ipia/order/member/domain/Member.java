@@ -36,6 +36,9 @@ public class Member extends BaseEntity {
     @Column(name = "email", nullable = false, length = 200)
     private String email;
 
+    @Column(name = "password", nullable = false, length = 255)
+    private String password;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -43,11 +46,13 @@ public class Member extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    private Member(String name, String email) {
+    private Member(String name, String email, String password) {
         validateName(name);
         validateEmail(email);
+        validatePassword(password);
         this.name = name;
         this.email = email;
+        this.password = password;
     }
 
     private void validateName(String name) {
@@ -69,6 +74,18 @@ public class Member extends BaseEntity {
         // 간단한 이메일 형식 검증
         if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
             throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다");
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (!StringUtils.hasText(password)) {
+            throw new IllegalArgumentException("비밀번호는 필수입니다");
+        }
+        if (password.length() < 8) {
+            throw new IllegalArgumentException("비밀번호는 8자 이상이어야 합니다");
+        }
+        if (password.length() > 255) {
+            throw new IllegalArgumentException("비밀번호는 255자를 초과할 수 없습니다");
         }
     }
 
@@ -110,12 +127,14 @@ public class Member extends BaseEntity {
      * @param id 회원 ID
      * @param name 회원 이름
      * @param email 이메일
+     * @param password 비밀번호 (암호화된 상태)
      * @return 테스트용 Member 객체
      */
-    public static Member createTestMember(Long id, String name, String email) {
+    public static Member createTestMember(Long id, String name, String email, String password) {
         Member member = Member.builder()
                 .name(name)
                 .email(email)
+                .password(password)
                 .build();
         
         // Reflection을 사용하여 필드 설정

@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * MemberController 통합 테스트 (예외 처리 시나리오)
  */
 @WebMvcTest(value = MemberController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
-class MemberControllerIntegrationTest {
+class   MemberControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
