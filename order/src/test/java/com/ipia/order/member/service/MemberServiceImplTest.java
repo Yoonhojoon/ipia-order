@@ -108,7 +108,7 @@ class MemberServiceImplTest {
         void findById_Success() {
             // given
             Long memberId = 1L;
-            given(memberRepository.findById(memberId))
+            given(memberRepository.findByIdAndIsActiveTrue(memberId))
                     .willReturn(java.util.Optional.of(validMember));
 
             // when
@@ -119,7 +119,7 @@ class MemberServiceImplTest {
             assertThat(result.get().getName()).isEqualTo("홍길동");
             assertThat(result.get().getEmail()).isEqualTo("hong@example.com");
             
-            verify(memberRepository).findById(memberId);
+            verify(memberRepository).findByIdAndIsActiveTrue(memberId);
         }
 
         @Test
@@ -127,14 +127,14 @@ class MemberServiceImplTest {
         void findById_Fail_NotFound() {
             // given
             Long nonExistentId = 999L;
-            given(memberRepository.findById(nonExistentId))
+            given(memberRepository.findByIdAndIsActiveTrue(nonExistentId))
                     .willReturn(java.util.Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> memberService.findById(nonExistentId))
                     .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findById(nonExistentId);
+            verify(memberRepository).findByIdAndIsActiveTrue(nonExistentId);
         }
 
         @Test
@@ -155,7 +155,7 @@ class MemberServiceImplTest {
         void findByEmail_Success() {
             // given
             String email = "hong@example.com";
-            given(memberRepository.findByEmail(email))
+            given(memberRepository.findByEmailAndIsActiveTrue(email))
                     .willReturn(java.util.Optional.of(validMember));
 
             // when
@@ -166,7 +166,7 @@ class MemberServiceImplTest {
             assertThat(result.get().getName()).isEqualTo("홍길동");
             assertThat(result.get().getEmail()).isEqualTo("hong@example.com");
             
-            verify(memberRepository).findByEmail(email);
+            verify(memberRepository).findByEmailAndIsActiveTrue(email);
         }
 
         @Test
@@ -174,14 +174,14 @@ class MemberServiceImplTest {
         void findByEmail_Fail_NotFound() {
             // given
             String nonExistentEmail = "nonexistent@example.com";
-            given(memberRepository.findByEmail(nonExistentEmail))
+            given(memberRepository.findByEmailAndIsActiveTrue(nonExistentEmail))
                     .willReturn(java.util.Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> memberService.findByEmail(nonExistentEmail))
                     .isInstanceOf(MemberHandler.class);
             
-            verify(memberRepository).findByEmail(nonExistentEmail);
+            verify(memberRepository).findByEmailAndIsActiveTrue(nonExistentEmail);
         }
 
         @Test
@@ -218,7 +218,7 @@ class MemberServiceImplTest {
                     .build();
             
             java.util.List<Member> members = java.util.List.of(member1, member2);
-            given(memberRepository.findAll())
+            given(memberRepository.findAllByIsActiveTrue())
                     .willReturn(members);
 
             // when
@@ -229,14 +229,14 @@ class MemberServiceImplTest {
             assertThat(result).extracting(Member::getName).containsExactlyInAnyOrder("홍길동", "김철수");
             assertThat(result).extracting(Member::getEmail).containsExactlyInAnyOrder("hong@example.com", "kim@example.com");
             
-            verify(memberRepository).findAll();
+            verify(memberRepository).findAllByIsActiveTrue();
         }
 
         @Test
         @DisplayName("멤버가 없을 때 모든 멤버 조회 시 빈 리스트 반환")
         void findAll_Empty() {
             // given
-            given(memberRepository.findAll())
+            given(memberRepository.findAllByIsActiveTrue())
                     .willReturn(java.util.List.of());
 
             // when
@@ -245,7 +245,7 @@ class MemberServiceImplTest {
             // then
             assertThat(result).isEmpty();
             
-            verify(memberRepository).findAll();
+            verify(memberRepository).findAllByIsActiveTrue();
         }
 
         @Test
@@ -263,7 +263,7 @@ class MemberServiceImplTest {
                     .build();
             
             java.util.List<Member> members = java.util.List.of(member1, member2);
-            given(memberRepository.findByName(name))
+            given(memberRepository.findByNameAndIsActiveTrue(name))
                     .willReturn(members);
 
             // when
@@ -274,7 +274,7 @@ class MemberServiceImplTest {
             assertThat(result).extracting(Member::getName).containsOnly("홍길동");
             assertThat(result).extracting(Member::getEmail).containsExactlyInAnyOrder("hong1@example.com", "hong2@example.com");
             
-            verify(memberRepository).findByName(name);
+            verify(memberRepository).findByNameAndIsActiveTrue(name);
         }
 
         @Test
@@ -282,7 +282,7 @@ class MemberServiceImplTest {
         void findByName_Fail_NotFound() {
             // given
             String nonExistentName = "존재하지않는이름";
-            given(memberRepository.findByName(nonExistentName))
+            given(memberRepository.findByNameAndIsActiveTrue(nonExistentName))
                     .willReturn(java.util.List.of());
 
             // when
@@ -291,7 +291,7 @@ class MemberServiceImplTest {
             // then
             assertThat(result).isEmpty();
             
-            verify(memberRepository).findByName(nonExistentName);
+            verify(memberRepository).findByNameAndIsActiveTrue(nonExistentName);
         }
 
         @Test
@@ -329,7 +329,7 @@ class MemberServiceImplTest {
         void findById_Fail_RepositoryFailure() {
             // given
             Long memberId = 1L;
-            given(memberRepository.findById(memberId))
+            given(memberRepository.findByIdAndIsActiveTrue(memberId))
                     .willThrow(new RuntimeException("데이터베이스 조회 실패"));
 
             // when & then
@@ -337,7 +337,7 @@ class MemberServiceImplTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("데이터베이스 조회 실패");
             
-            verify(memberRepository).findById(memberId);
+            verify(memberRepository).findByIdAndIsActiveTrue(memberId);
         }
 
         @Test
@@ -345,7 +345,7 @@ class MemberServiceImplTest {
         void findByEmail_Fail_RepositoryFailure() {
             // given
             String email = "hong@example.com";
-            given(memberRepository.findByEmail(email))
+            given(memberRepository.findByEmailAndIsActiveTrue(email))
                     .willThrow(new RuntimeException("데이터베이스 조회 실패"));
 
             // when & then
@@ -353,14 +353,14 @@ class MemberServiceImplTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("데이터베이스 조회 실패");
             
-            verify(memberRepository).findByEmail(email);
+            verify(memberRepository).findByEmailAndIsActiveTrue(email);
         }
 
         @Test
         @DisplayName("Repository 조회 실패 시 예외 전파 - findAll")
         void findAll_Fail_RepositoryFailure() {
             // given
-            given(memberRepository.findAll())
+            given(memberRepository.findAllByIsActiveTrue())
                     .willThrow(new RuntimeException("데이터베이스 조회 실패"));
 
             // when & then
@@ -368,7 +368,7 @@ class MemberServiceImplTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("데이터베이스 조회 실패");
             
-            verify(memberRepository).findAll();
+            verify(memberRepository).findAllByIsActiveTrue();
         }
 
         @Test
@@ -376,7 +376,7 @@ class MemberServiceImplTest {
         void findByName_Fail_RepositoryFailure() {
             // given
             String name = "홍길동";
-            given(memberRepository.findByName(name))
+            given(memberRepository.findByNameAndIsActiveTrue(name))
                     .willThrow(new RuntimeException("데이터베이스 조회 실패"));
 
             // when & then
@@ -384,7 +384,7 @@ class MemberServiceImplTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("데이터베이스 조회 실패");
             
-            verify(memberRepository).findByName(name);
+            verify(memberRepository).findByNameAndIsActiveTrue(name);
             }
         }
 

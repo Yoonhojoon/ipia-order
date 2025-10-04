@@ -40,14 +40,8 @@ public class MemberServiceImpl implements MemberService {
         if (id == null) {
             throw new MemberHandler(MemberErrorStatus.INVALID_INPUT);
         }
-        Member member = memberRepository.findById(id)
+        Member member = memberRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
-        
-        // 탈퇴한 회원은 조회하지 않음
-        if (!member.isActive()) {
-            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
-        }
-        
         return Optional.of(member);
     }
 
@@ -56,20 +50,14 @@ public class MemberServiceImpl implements MemberService {
         if (email == null || email.isBlank()) {
             throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
         }
-        Member member = memberRepository.findByEmail(email)
+        Member member = memberRepository.findByEmailAndIsActiveTrue(email)
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
-        
-        // 탈퇴한 회원은 조회하지 않음
-        if (!member.isActive()) {
-            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
-        }
-        
         return Optional.of(member);
     }
 
     @Override
     public List<Member> findAll() {
-        return memberRepository.findAll();
+        return memberRepository.findAllByIsActiveTrue();
     }
 
     @Override
@@ -77,7 +65,7 @@ public class MemberServiceImpl implements MemberService {
         if (name == null || name.isBlank()) {
             throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
         }
-        return memberRepository.findByName(name);
+        return memberRepository.findByNameAndIsActiveTrue(name);
     }
 
     @Override
@@ -105,6 +93,11 @@ public class MemberServiceImpl implements MemberService {
 
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+
+        // 탈퇴한 회원은 비밀번호 변경 불가
+        if (!member.isActive()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
 
         // 현재 비밀번호 검증/저장은 아직 도메인에 없으므로 최소 구현: 정책 위반/불일치 시 예외
         if (!currentPassword.equals("currentPass123!")) {

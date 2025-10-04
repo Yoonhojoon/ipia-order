@@ -600,24 +600,22 @@ class MemberRepositoryTest {
         @DisplayName("탈퇴한 회원은 전체 조회에서 제외됨")
         void findAll_ExcludesInactiveMembers() {
             // given
-            // Member activeMember1 = memberRepository.save(validMember);
-            // Member activeMember2 = memberRepository.save(Member.builder()
-            //         .name("김철수")
-            //         .email("kim@example.com")
-            //         .build());
-            // entityManager.flush();
+            Member activeMember1 = memberRepository.save(validMember);
+            Member activeMember2 = memberRepository.save(Member.builder()
+                    .name("김철수")
+                    .email("kim@example.com")
+                    .build());
+            entityManager.flush();
 
-            // // when: 한 명 탈퇴 처리
-            //  activeMember1.deactivate();
-            //  memberRepository.save(activeMember1);
-            //  entityManager.flush();
+            // when: 한 명 탈퇴 처리
+            activeMember1.deactivate();
+            memberRepository.save(activeMember1);
+            entityManager.flush();
 
-            // // then: 활성 회원만 조회되어야 함
-            //  var allMembers = memberRepository.findAll();
-            //  assertThat(allMembers).hasSize(1);
-            //  assertThat(allMembers).extracting(Member::getName).containsOnly("김철수");
-            
-            // // 현재는 구현되지 않았으므로 주석 처리
+            // then: 활성 회원만 조회되어야 함
+            var allActiveMembers = memberRepository.findAllByIsActiveTrue();
+            assertThat(allActiveMembers).hasSize(1);
+            assertThat(allActiveMembers).extracting(Member::getName).containsOnly("김철수");
         }
     }
 
