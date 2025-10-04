@@ -1,7 +1,8 @@
-package com.ipia.order.web.controller;
+package com.ipia.order.web.controller.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.member.service.MemberService;
+import com.ipia.order.web.controller.MemberController;
 import com.ipia.order.web.dto.request.MemberSignupRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
