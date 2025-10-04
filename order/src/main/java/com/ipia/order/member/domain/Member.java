@@ -105,4 +105,40 @@ public class Member extends BaseEntity {
         return this.deletedAt;
     }
 
+    /**
+     * 테스트용 Member 생성 (Reflection 사용)
+     * @param id 회원 ID
+     * @param name 회원 이름
+     * @param email 이메일
+     * @return 테스트용 Member 객체
+     */
+    public static Member createTestMember(Long id, String name, String email) {
+        Member member = Member.builder()
+                .name(name)
+                .email(email)
+                .build();
+        
+        // Reflection을 사용하여 필드 설정
+        try {
+            // ID 필드 설정
+            java.lang.reflect.Field idField = Member.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(member, id);
+            
+            // createdAt 필드 설정
+            java.lang.reflect.Field createdAtField = Member.class.getSuperclass().getDeclaredField("createdAt");
+            createdAtField.setAccessible(true);
+            createdAtField.set(member, LocalDateTime.now());
+            
+            // updatedAt 필드 설정
+            java.lang.reflect.Field updatedAtField = Member.class.getSuperclass().getDeclaredField("updatedAt");
+            updatedAtField.setAccessible(true);
+            updatedAtField.set(member, LocalDateTime.now());
+        } catch (Exception e) {
+            throw new RuntimeException("테스트용 Member 생성 실패", e);
+        }
+        
+        return member;
+    }
+
 }

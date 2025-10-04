@@ -9,6 +9,8 @@ public enum ErrorStatus implements ErrorResponse {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "COMMON4001", "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "COMMON4003", "접근이 거부되었습니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON4004", "리소스를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON4005", "지원하지 않는 HTTP 메서드입니다."),
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "COMMON4015", "지원하지 않는 미디어 타입입니다."),
 
 
     // ==== 500번대: 서버 오류 ====

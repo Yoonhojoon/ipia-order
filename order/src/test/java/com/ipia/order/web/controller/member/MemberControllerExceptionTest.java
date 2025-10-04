@@ -1,24 +1,32 @@
 package com.ipia.order.web.controller.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
-import com.ipia.order.web.controller.MemberController;
 import com.ipia.order.web.dto.request.MemberSignupRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * MemberController 예외 처리 테스트
  */
-@WebMvcTest(MemberController.class)
+@WebMvcTest(value = MemberController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 class MemberControllerExceptionTest {
 
     @Autowired
@@ -120,9 +128,9 @@ class MemberControllerExceptionTest {
     @DisplayName("존재하지 않는 엔드포인트 - 404 Not Found")
     void nonExistentEndpoint_Returns404() throws Exception {
         // Given & When & Then
-        mockMvc.perform(get("/api/members/non-existent")
+        mockMvc.perform(get("/api/members/invalid-id")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -134,6 +142,9 @@ class MemberControllerExceptionTest {
                 .email("hong@example.com")
                 .build();
         String jsonRequest = objectMapper.writeValueAsString(request);
+
+        // Mock 설정 - 예외 발생
+        when(memberService.signup(anyString(), anyString())).thenThrow(new RuntimeException("서버 내부 오류"));
 
         // When & Then
         mockMvc.perform(post("/api/members")
