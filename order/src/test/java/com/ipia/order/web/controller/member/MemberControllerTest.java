@@ -1,6 +1,8 @@
 package com.ipia.order.web.controller.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ipia.order.common.exception.member.MemberHandler;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.web.dto.request.MemberPasswordRequest;
@@ -19,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 import java.util.List;
 import java.util.Optional;
@@ -53,11 +56,11 @@ class MemberControllerTest {
             String newName = invocation.getArgument(1);
             return createMockMember(1L, newName, "hong@example.com");
         });
-        Mockito.when(memberService.updateNickname(Mockito.eq(999L), Mockito.anyString())).thenThrow(new RuntimeException("Member not found"));
+        Mockito.when(memberService.updateNickname(Mockito.eq(999L), Mockito.anyString())).thenThrow(new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
         Mockito.doNothing().when(memberService).updatePassword(Mockito.eq(1L), Mockito.eq("oldPassword123"), Mockito.anyString());
-        Mockito.doThrow(new RuntimeException("Invalid password")).when(memberService).updatePassword(Mockito.eq(1L), Mockito.eq("wrongPassword"), Mockito.anyString());
+        Mockito.doThrow(new MemberHandler(MemberErrorStatus.PASSWORD_MISMATCH)).when(memberService).updatePassword(Mockito.eq(1L), Mockito.eq("wrongPassword"), Mockito.anyString());
         Mockito.doNothing().when(memberService).withdraw(Mockito.eq(1L));
-        Mockito.doThrow(new RuntimeException("Member not found")).when(memberService).withdraw(Mockito.eq(999L));
+        Mockito.doThrow(new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND)).when(memberService).withdraw(Mockito.eq(999L));
     }
 
     @Test

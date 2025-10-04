@@ -1,7 +1,7 @@
 package com.ipia.order.web.controller.member;
 
 import com.ipia.order.common.exception.ApiResponse;
-import com.ipia.order.common.exception.general.status.ErrorStatus;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import com.ipia.order.common.exception.member.status.MemberSuccessStatus;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
@@ -43,16 +43,12 @@ public class MemberController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MemberResponse>> findById(@PathVariable("id") Long id) {
-        try {
-            Member member = memberService.findById(id).orElse(null);
-            if (member == null) {
-                return ApiResponse.onFailure(ErrorStatus.NOT_FOUND, (MemberResponse) null);
-            }
-            MemberResponse response = MemberResponse.from(member);
-            return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_FOUND, response);
-        } catch (Exception e) {
-            return ApiResponse.onFailure(ErrorStatus.NOT_FOUND, (MemberResponse) null);
+        Member member = memberService.findById(id).orElse(null);
+        if (member == null) {
+            return ApiResponse.onFailure(MemberErrorStatus.MEMBER_NOT_FOUND, (MemberResponse) null);
         }
+        MemberResponse response = MemberResponse.from(member);
+        return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_FOUND, response);
     }
 
     /**
@@ -61,16 +57,12 @@ public class MemberController {
      */
     @GetMapping("/email/{email}")
     public ResponseEntity<ApiResponse<MemberResponse>> findByEmail(@PathVariable("email") String email) {
-        try {
-            Member member = memberService.findByEmail(email).orElse(null);
-            if (member == null) {
-                return ApiResponse.onFailure(ErrorStatus.NOT_FOUND, (MemberResponse) null);
-            }
-            MemberResponse response = MemberResponse.from(member);
-            return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_FOUND, response);
-        } catch (Exception e) {
-            return ApiResponse.onFailure(ErrorStatus.NOT_FOUND, (MemberResponse) null);
+        Member member = memberService.findByEmail(email).orElse(null);
+        if (member == null) {
+            return ApiResponse.onFailure(MemberErrorStatus.MEMBER_NOT_FOUND, (MemberResponse) null);
         }
+        MemberResponse response = MemberResponse.from(member);
+        return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_FOUND, response);
     }
 
     /**
@@ -106,13 +98,9 @@ public class MemberController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MemberResponse>> update(@PathVariable("id") Long id,
                                                @Valid @RequestBody MemberUpdateRequest request) {
-        try {
-            Member member = memberService.updateNickname(id, request.getName());
-            MemberResponse response = MemberResponse.from(member);
-            return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_UPDATED, response);
-        } catch (RuntimeException e) {
-            return ApiResponse.onFailure(ErrorStatus.NOT_FOUND, (MemberResponse) null);
-        }
+        Member member = memberService.updateNickname(id, request.getName());
+        MemberResponse response = MemberResponse.from(member);
+        return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_UPDATED, response);
     }
 
     /**
@@ -122,12 +110,8 @@ public class MemberController {
     @PutMapping("/{id}/password")
     public ResponseEntity<ApiResponse<Void>> updatePassword(@PathVariable("id") Long id,
                                               @Valid @RequestBody MemberPasswordRequest request) {
-        try {
-            memberService.updatePassword(id, request.getCurrentPassword(), request.getNewPassword());
-            return ApiResponse.onSuccess(MemberSuccessStatus.PASSWORD_UPDATED);
-        } catch (RuntimeException e) {
-            return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, (Void) null);
-        }
+        memberService.updatePassword(id, request.getCurrentPassword(), request.getNewPassword());
+        return ApiResponse.onSuccess(MemberSuccessStatus.PASSWORD_UPDATED);
     }
 
     /**
@@ -136,11 +120,7 @@ public class MemberController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> withdraw(@PathVariable("id") Long id) {
-        try {
-            memberService.withdraw(id);
-            return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_WITHDRAWN);
-        } catch (RuntimeException e) {
-            return ApiResponse.onFailure(ErrorStatus.NOT_FOUND, (Void) null);
-        }
+        memberService.withdraw(id);
+        return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_WITHDRAWN);
     }
 }
