@@ -52,7 +52,7 @@ public class Member extends BaseEntity {
         validatePassword(password);
         this.name = name;
         this.email = email;
-        this.password = password;
+        this.password = password; // 이미 암호화된 비밀번호를 받음
     }
 
     private void validateName(String name) {
@@ -81,9 +81,7 @@ public class Member extends BaseEntity {
         if (!StringUtils.hasText(password)) {
             throw new IllegalArgumentException("비밀번호는 필수입니다");
         }
-        if (password.length() < 8) {
-            throw new IllegalArgumentException("비밀번호는 8자 이상이어야 합니다");
-        }
+        // 암호화된 비밀번호는 BCrypt 해시 형태이므로 길이 제한을 늘림
         if (password.length() > 255) {
             throw new IllegalArgumentException("비밀번호는 255자를 초과할 수 없습니다");
         }
@@ -120,6 +118,16 @@ public class Member extends BaseEntity {
      */
     public LocalDateTime getDeletedAt() {
         return this.deletedAt;
+    }
+
+    /**
+     * 비밀번호 검증
+     * @param rawPassword 평문 비밀번호
+     * @param passwordEncoder 비밀번호 인코더
+     * @return 비밀번호 일치 여부
+     */
+    public boolean checkPassword(String rawPassword, com.ipia.order.common.util.PasswordEncoder passwordEncoder) {
+        return passwordEncoder.matches(rawPassword, this.password);
     }
 
     /**
