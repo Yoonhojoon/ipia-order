@@ -1,5 +1,6 @@
 package com.ipia.order.web.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ipia.order.member.domain.Member;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -15,12 +16,25 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberResponse {
 
+    @JsonProperty("id")
     private Long id;
+    
+    @JsonProperty("name")
     private String name;
+    
+    @JsonProperty("email")
     private String email;
+    
+    @JsonProperty("isActive")
     private Boolean isActive;
+    
+    @JsonProperty("createdAt")
     private LocalDateTime createdAt;
+    
+    @JsonProperty("updatedAt")
     private LocalDateTime updatedAt;
+    
+    @JsonProperty("deletedAt")
     private LocalDateTime deletedAt;
 
     @Builder

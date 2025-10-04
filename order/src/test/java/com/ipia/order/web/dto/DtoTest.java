@@ -1,6 +1,7 @@
 package com.ipia.order.web.dto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ipia.order.web.dto.request.MemberPasswordRequest;
 import com.ipia.order.web.dto.request.MemberSignupRequest;
 import com.ipia.order.web.dto.request.MemberUpdateRequest;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DtoTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     @Test
     @DisplayName("MemberSignupRequest JSON 직렬화/역직렬화 테스트")
