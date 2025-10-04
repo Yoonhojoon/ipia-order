@@ -84,16 +84,18 @@ public class Member extends BaseEntity {
      * 회원 활성 상태 확인
      */
     public boolean isActive() {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("구현 예정");
+        return this.isActive;
     }
 
     /**
      * 회원 상태를 비활성으로 변경
      */
     public void deactivate() {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("구현 예정");
+        if (!this.isActive) {
+            throw new IllegalStateException("이미 탈퇴한 회원입니다");
+        }
+        this.isActive = false;
+        this.deletedAt = LocalDateTime.now();
     }
 
     /**
