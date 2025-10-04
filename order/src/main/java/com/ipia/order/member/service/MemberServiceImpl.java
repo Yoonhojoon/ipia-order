@@ -1,12 +1,14 @@
 package com.ipia.order.member.service;
 
-import com.ipia.order.member.domain.Member;
-import com.ipia.order.member.repository.MemberRepository;
-import com.ipia.order.common.exception.member.MemberHandler;
-import com.ipia.order.common.exception.member.status.MemberErrorStatus;
-import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.ipia.order.common.exception.member.MemberHandler;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
+import com.ipia.order.member.domain.Member;
+import com.ipia.order.member.repository.MemberRepository;
 
 @Service
 public class MemberServiceImpl implements MemberService {
@@ -40,6 +42,12 @@ public class MemberServiceImpl implements MemberService {
         }
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+        
+        // 탈퇴한 회원은 조회하지 않음
+        if (!member.isActive()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        
         return Optional.of(member);
     }
 
@@ -50,6 +58,12 @@ public class MemberServiceImpl implements MemberService {
         }
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+        
+        // 탈퇴한 회원은 조회하지 않음
+        if (!member.isActive()) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+        
         return Optional.of(member);
     }
 
@@ -106,6 +120,20 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public void withdraw(Long id) {
+        if (id == null) {
+            throw new MemberHandler(MemberErrorStatus.INVALID_INPUT);
+        }
 
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+
+        // 이미 탈퇴한 회원인지 확인
+        if (!member.isActive()) {
+            throw new MemberHandler(MemberErrorStatus.ALREADY_INACTIVE);
+        }
+
+        // 회원 탈퇴 처리
+        member.deactivate();
+        memberRepository.save(member);
     }
 }

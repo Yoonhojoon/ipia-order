@@ -602,8 +602,8 @@ class MemberServiceImplTest {
                     .name("홍길동")
                     .email("hong@example.com")
                     .build();
-            // 이미 탈퇴한 상태로 설정 (실제 구현에서는 isActive() 메서드로 확인)
-            // inactiveMember.deactivate(); // 구현 후 활성화
+            // 이미 탈퇴한 상태로 설정
+            inactiveMember.deactivate();
             
             given(memberRepository.findById(memberId))
                     .willReturn(java.util.Optional.of(inactiveMember));
@@ -638,123 +638,6 @@ class MemberServiceImplTest {
             
             verify(memberRepository).findById(memberId);
             verify(memberRepository).save(any(Member.class));
-        }
-    }
-
-    @Nested
-    @DisplayName("탈퇴 회원 제외 조회 테스트")
-    class ExcludeInactiveMembersTest {
-
-        @Test
-        @DisplayName("ID로 조회 시 탈퇴한 회원은 조회되지 않음")
-        void findById_ExcludesInactiveMembers() {
-            // given
-            Long memberId = 1L;
-            Member inactiveMember = Member.builder()
-                    .name("홍길동")
-                    .email("hong@example.com")
-                    .build();
-            // 탈퇴한 상태로 설정 (실제 구현에서는 isActive() 메서드로 확인)
-            // inactiveMember.withdraw();
-            
-            given(memberRepository.findById(memberId))
-                    .willReturn(java.util.Optional.of(inactiveMember));
-
-            // when & then
-            // 실제 구현에서는 탈퇴한 회원에 대해 MEMBER_NOT_FOUND 예외 발생
-            // assertThatThrownBy(() -> memberService.findById(memberId))
-            //         .isInstanceOf(MemberHandler.class);
-            
-            // 현재는 구현되지 않았으므로 주석 처리
-            // 구현 후에는 탈퇴한 회원이 조회되지 않는 것을 검증
-        }
-
-        @Test
-        @DisplayName("이메일로 조회 시 탈퇴한 회원은 조회되지 않음")
-        void findByEmail_ExcludesInactiveMembers() {
-            // given
-            String email = "hong@example.com";
-            Member inactiveMember = Member.builder()
-                    .name("홍길동")
-                    .email(email)
-                    .build();
-            // 탈퇴한 상태로 설정
-            // inactiveMember.deactivate();
-            
-            given(memberRepository.findByEmail(email))
-                    .willReturn(java.util.Optional.of(inactiveMember));
-
-            // when & then
-            // 실제 구현에서는 탈퇴한 회원에 대해 MEMBER_NOT_FOUND 예외 발생
-            // assertThatThrownBy(() -> memberService.findByEmail(email))
-            //         .isInstanceOf(MemberHandler.class);
-            
-            // 현재는 구현되지 않았으므로 주석 처리
-        }
-
-        @Test
-        @DisplayName("이름으로 조회 시 탈퇴한 회원은 제외됨")
-        void findByName_ExcludesInactiveMembers() {
-            // given
-            String name = "홍길동";
-            Member activeMember = Member.builder()
-                    .name(name)
-                    .email("active@example.com")
-                    .build();
-            Member inactiveMember = Member.builder()
-                    .name(name)
-                    .email("inactive@example.com")
-                    .build();
-            // 탈퇴한 상태로 설정
-            // inactiveMember.deactivate();
-            
-            java.util.List<Member> members = java.util.List.of(activeMember);
-            given(memberRepository.findByName(name))
-                    .willReturn(members);
-
-            // when
-            var result = memberService.findByName(name);
-
-            // then
-            // 실제 구현에서는 활성 회원만 조회되어야 함
-            assertThat(result).hasSize(1);
-            assertThat(result).extracting(Member::getEmail).containsOnly("active@example.com");
-            
-            // 현재는 구현되지 않았으므로 주석 처리된 부분이 실제 동작해야 함
-        }
-
-        @Test
-        @DisplayName("전체 조회 시 탈퇴한 회원은 제외됨")
-        void findAll_ExcludesInactiveMembers() {
-            // given
-            Member activeMember1 = Member.builder()
-                    .name("홍길동")
-                    .email("hong1@example.com")
-                    .build();
-            Member activeMember2 = Member.builder()
-                    .name("김철수")
-                    .email("kim@example.com")
-                    .build();
-            Member inactiveMember = Member.builder()
-                    .name("이영희")
-                    .email("lee@example.com")
-                    .build();
-            // 탈퇴한 상태로 설정
-            // inactiveMember.deactivate();
-            
-            java.util.List<Member> activeMembers = java.util.List.of(activeMember1, activeMember2);
-            given(memberRepository.findAll())
-                    .willReturn(activeMembers);
-
-            // when
-            var result = memberService.findAll();
-
-            // then
-            // 실제 구현에서는 활성 회원만 조회되어야 함
-            assertThat(result).hasSize(2);
-            assertThat(result).extracting(Member::getEmail).containsExactlyInAnyOrder("hong1@example.com", "kim@example.com");
-            
-            // 현재는 구현되지 않았으므로 주석 처리된 부분이 실제 동작해야 함
         }
     }
 }

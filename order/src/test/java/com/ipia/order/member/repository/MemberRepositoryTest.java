@@ -608,14 +608,14 @@ class MemberRepositoryTest {
             entityManager.flush();
 
             // when: 한 명 탈퇴 처리
-            // activeMember1.deactivate();
-            // memberRepository.save(activeMember1);
-            // entityManager.flush();
+             activeMember1.deactivate();
+             memberRepository.save(activeMember1);
+             entityManager.flush();
 
             // then: 활성 회원만 조회되어야 함
-            // var allMembers = memberRepository.findAll();
-            // assertThat(allMembers).hasSize(1);
-            // assertThat(allMembers).extracting(Member::getName).containsOnly("김철수");
+             var allMembers = memberRepository.findAll();
+             assertThat(allMembers).hasSize(1);
+             assertThat(allMembers).extracting(Member::getName).containsOnly("김철수");
             
             // 현재는 구현되지 않았으므로 주석 처리
         }
@@ -671,8 +671,9 @@ class MemberRepositoryTest {
             entityManager.flush();
 
             // then
-            assertThat(activeMember.isActive()).isTrue(); // 원본 객체는 여전히 활성
-            assertThat(withdrawnMember.isActive()).isFalse(); // 저장된 객체는 비활성
+            assertThat(activeMember.isActive()).isFalse(); // 탈퇴 후 비활성 상태
+            assertThat(withdrawnMember.isActive()).isFalse(); // 저장된 객체도 비활성
+            assertThat(activeMember.getDeletedAt()).isNotNull(); // 탈퇴 시간 설정됨
         }
 
         @Test
@@ -751,7 +752,7 @@ class MemberRepositoryTest {
                         .setParameter("id", m2.getId())
                         .executeUpdate();
                 entityManager.flush();
-            }).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            }).isInstanceOf(org.hibernate.exception.ConstraintViolationException.class);
         }
     }
 }
