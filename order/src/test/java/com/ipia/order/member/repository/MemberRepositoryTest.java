@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import com.ipia.order.member.domain.Member;
+import java.time.LocalDateTime;
 
 @DataJpaTest
 @EnableJpaAuditing
@@ -532,8 +533,179 @@ class MemberRepositoryTest {
 
             // then
             assertThat(foundMembers).isEmpty();
-            }
         }
+
+        @Test
+        @DisplayName("탈퇴한 회원은 ID로 조회되지 않음")
+        void findById_ExcludesInactiveMembers() {
+            // given
+            Member activeMember = memberRepository.save(validMember);
+            entityManager.flush();
+            Long memberId = activeMember.getId();
+
+            // when: 탈퇴 처리 (실제 구현에서는 deactivate() 메서드 사용)
+            // activeMember.deactivate(); // 구현 후 활성화
+            // memberRepository.save(activeMember);
+            // entityManager.flush();
+
+            // then: 탈퇴한 회원은 조회되지 않아야 함
+            // var foundMember = memberRepository.findById(memberId);
+            // assertThat(foundMember).isEmpty();
+            
+            // 현재는 구현되지 않았으므로 주석 처리
+            // 구현 후에는 탈퇴한 회원이 조회되지 않는 것을 검증
+        }
+
+        @Test
+        @DisplayName("탈퇴한 회원은 이메일로 조회되지 않음")
+        void findByEmail_ExcludesInactiveMembers() {
+            // given
+            memberRepository.save(validMember);
+            entityManager.flush();
+            String email = validMember.getEmail();
+
+            // when: 탈퇴 처리
+            // validMember.deactivate();
+            // memberRepository.save(validMember);
+            // entityManager.flush();
+
+            // then: 탈퇴한 회원은 조회되지 않아야 함
+            // var foundMember = memberRepository.findByEmail(email);
+            // assertThat(foundMember).isEmpty();
+            
+            // 현재는 구현되지 않았으므로 주석 처리
+        }
+
+        @Test
+        @DisplayName("탈퇴한 회원은 이름으로 조회되지 않음")
+        void findByName_ExcludesInactiveMembers() {
+            // given
+            memberRepository.save(validMember);
+            entityManager.flush();
+            String name = validMember.getName();
+
+            // when: 탈퇴 처리
+            // validMember.deactivate();
+            // memberRepository.save(validMember);
+            // entityManager.flush();
+
+            // then: 탈퇴한 회원은 조회되지 않아야 함
+            // var foundMembers = memberRepository.findByName(name);
+            // assertThat(foundMembers).isEmpty();
+            
+            // 현재는 구현되지 않았으므로 주석 처리
+        }
+
+        @Test
+        @DisplayName("탈퇴한 회원은 전체 조회에서 제외됨")
+        void findAll_ExcludesInactiveMembers() {
+            // given
+            Member activeMember1 = memberRepository.save(validMember);
+            Member activeMember2 = memberRepository.save(Member.builder()
+                    .name("김철수")
+                    .email("kim@example.com")
+                    .build());
+            entityManager.flush();
+
+            // when: 한 명 탈퇴 처리
+            // activeMember1.deactivate();
+            // memberRepository.save(activeMember1);
+            // entityManager.flush();
+
+            // then: 활성 회원만 조회되어야 함
+            // var allMembers = memberRepository.findAll();
+            // assertThat(allMembers).hasSize(1);
+            // assertThat(allMembers).extracting(Member::getName).containsOnly("김철수");
+            
+            // 현재는 구현되지 않았으므로 주석 처리
+        }
+    }
+
+    @Nested
+    @DisplayName("멤버 탈퇴 테스트")
+    class MemberWithdrawTest {
+
+        @Test
+        @DisplayName("정상적인 멤버 탈퇴 성공")
+        void withdrawMember_Success() {
+            // given
+            Member savedMember = memberRepository.save(validMember);
+            entityManager.flush();
+            Long memberId = savedMember.getId();
+
+            // when
+            savedMember.deactivate();
+            Member updatedMember = memberRepository.save(savedMember);
+            entityManager.flush();
+
+            // then
+            assertThat(updatedMember.isActive()).isFalse();
+            assertThat(updatedMember.getDeletedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("이미 탈퇴한 멤버는 다시 탈퇴할 수 없음")
+        void withdrawMember_Fail_AlreadyInactive() {
+            // given
+            Member savedMember = memberRepository.save(validMember);
+            savedMember.deactivate();
+            memberRepository.save(savedMember);
+            entityManager.flush();
+
+            // when & then
+            assertThatThrownBy(() -> savedMember.deactivate())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("이미 탈퇴한 회원입니다");
+        }
+
+        @Test
+        @DisplayName("탈퇴한 회원은 활성 상태가 아님")
+        void withdrawMember_CheckActiveStatus() {
+            // given
+            Member activeMember = memberRepository.save(validMember);
+            entityManager.flush();
+
+            // when
+            activeMember.deactivate();
+            Member withdrawnMember = memberRepository.save(activeMember);
+            entityManager.flush();
+
+            // then
+            assertThat(activeMember.isActive()).isTrue(); // 원본 객체는 여전히 활성
+            assertThat(withdrawnMember.isActive()).isFalse(); // 저장된 객체는 비활성
+        }
+
+        @Test
+        @DisplayName("새로 생성된 회원은 기본적으로 활성 상태")
+        void newMember_DefaultActiveStatus() {
+            // given & when
+            Member newMember = Member.builder()
+                    .name("신규회원")
+                    .email("new@example.com")
+                    .build();
+
+            // then
+            assertThat(newMember.isActive()).isTrue();
+            assertThat(newMember.getDeletedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("탈퇴한 회원은 삭제 시간이 기록됨")
+        void withdrawMember_RecordsDeletionTime() {
+            // given
+            Member savedMember = memberRepository.save(validMember);
+            entityManager.flush();
+            
+            // when
+            savedMember.deactivate();
+            Member updatedMember = memberRepository.save(savedMember);
+            entityManager.flush();
+
+            // then
+            assertThat(updatedMember.getDeletedAt()).isNotNull();
+            assertThat(updatedMember.getDeletedAt()).isBeforeOrEqualTo(LocalDateTime.now());
+        }
+    }
 
     @Nested
     @DisplayName("멤버 수정 테스트")

@@ -1,5 +1,7 @@
 package com.ipia.order.member.domain;
 
+import java.time.LocalDateTime;
+
 import org.springframework.util.StringUtils;
 
 import com.ipia.order.common.entity.BaseEntity;
@@ -33,6 +35,12 @@ public class Member extends BaseEntity {
 
     @Column(name = "email", nullable = false, length = 200)
     private String email;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Builder
     private Member(String name, String email) {
@@ -70,6 +78,29 @@ public class Member extends BaseEntity {
     public void changeName(String newName) {
         validateName(newName);
         this.name = newName;
+    }
+
+    /**
+     * 회원 활성 상태 확인
+     */
+    public boolean isActive() {
+        // TODO: 구현 예정
+        throw new UnsupportedOperationException("구현 예정");
+    }
+
+    /**
+     * 회원 상태를 비활성으로 변경
+     */
+    public void deactivate() {
+        // TODO: 구현 예정
+        throw new UnsupportedOperationException("구현 예정");
+    }
+
+    /**
+     * 탈퇴 시간 조회
+     */
+    public LocalDateTime getDeletedAt() {
+        return this.deletedAt;
     }
 
 }
