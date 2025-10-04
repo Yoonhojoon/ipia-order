@@ -103,4 +103,9 @@ public class MemberServiceImpl implements MemberService {
         // 실제 암호 저장 로직이 없으므로 저장만 수행하여 테스트의 저장 호출을 만족
         memberRepository.save(member);
     }
+
+    @Override
+    public void withdraw(Long id) {
+
+    }
 }

@@ -43,4 +43,9 @@ public interface MemberService {
      * 비밀번호 변경
      */
     void updatePassword(Long id, String currentPassword, String newPassword);
+
+    /**
+     * 회원 탈퇴
+     */
+    void withdraw(Long id);
 }
