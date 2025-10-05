@@ -1,6 +1,7 @@
 package com.ipia.order.common.config;
 
 import com.ipia.order.common.filter.JwtAuthenticationFilter;
+import com.ipia.order.common.filter.JwtExceptionHandlerFilter;
 import com.ipia.order.common.exception.SecurityExceptionHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +28,7 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final JwtExceptionHandlerFilter jwtExceptionHandlerFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final SecurityExceptionHandler securityExceptionHandler;
 
@@ -74,7 +76,8 @@ public class SecurityConfig {
                 .accessDeniedHandler(securityExceptionHandler)
             )
             
-            // JWT 필터 추가
+            // JWT 필터 추가 (순서 중요: ExceptionHandler -> Authentication)
+            .addFilterBefore(jwtExceptionHandlerFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

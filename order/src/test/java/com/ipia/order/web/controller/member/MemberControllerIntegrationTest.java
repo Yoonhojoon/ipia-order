@@ -2,7 +2,7 @@ package com.ipia.order.web.controller.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.member.domain.Member;
-import com.ipia.order.common.enums.MemberRole;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.web.dto.request.MemberSignupRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -14,9 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;

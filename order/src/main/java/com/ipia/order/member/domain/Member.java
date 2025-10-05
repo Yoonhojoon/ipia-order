@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.util.StringUtils;
 
 import com.ipia.order.common.entity.BaseEntity;
-import com.ipia.order.common.enums.MemberRole;
+import com.ipia.order.member.enums.MemberRole;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

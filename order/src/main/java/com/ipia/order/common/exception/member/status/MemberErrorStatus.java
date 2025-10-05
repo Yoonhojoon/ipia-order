@@ -26,7 +26,11 @@ public enum MemberErrorStatus implements ErrorResponse {
     @ExplainError("현재 비밀번호 불일치")
     PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER4007", "현재 비밀번호가 일치하지 않습니다."),
     @ExplainError("새 비밀번호 정책 위반")
-    PASSWORD_POLICY_VIOLATION(HttpStatus.BAD_REQUEST, "MEMBER4008", "새 비밀번호가 정책을 위반했습니다.");
+    PASSWORD_POLICY_VIOLATION(HttpStatus.BAD_REQUEST, "MEMBER4008", "새 비밀번호가 정책을 위반했습니다."),
+    @ExplainError("권한이 올바르지 않은 회원")
+    INVALID_ROLE(HttpStatus.BAD_REQUEST, "MEMBER4009", "유효하지 않은 권한 코드입니다.");
+
+
 
 
     private final HttpStatus httpStatus;

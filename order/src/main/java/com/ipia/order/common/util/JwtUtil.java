@@ -1,9 +1,15 @@
 package com.ipia.order.common.util;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SecurityException;
+import com.ipia.order.common.exception.auth.JwtExceptionHandler;
+import com.ipia.order.common.exception.auth.status.AuthErrorStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -42,8 +48,8 @@ public class JwtUtil {
     public String generateAccessToken(Long userId, String email, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
-
-        return Jwts.builder()
+        
+        String token = Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("email", email)
                 .claim("role", role)
@@ -52,6 +58,11 @@ public class JwtUtil {
                 .setExpiration(expiryDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
+        
+        log.info("액세스 토큰 생성 완료 - userId: {}, email: {}, role: {}, 만료시간: {}", 
+                userId, email, role, expiryDate);
+        
+        return token;
     }
 
     /**
@@ -63,13 +74,17 @@ public class JwtUtil {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshTokenExpiration);
 
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("type", "REFRESH")
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
+        
+        log.info("리프레시 토큰 생성 완료 - userId: {}, 만료시간: {}", userId, expiryDate);
+        
+        return token;
     }
 
     /**
@@ -119,11 +134,23 @@ public class JwtUtil {
      */
     public boolean validateToken(String token) {
         try {
-            getClaimsFromToken(token);
+            Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token);
             return true;
-        } catch (Exception e) {
-            log.warn("Invalid token: {}", e.getMessage());
-            return false;
+        } catch (SecurityException | MalformedJwtException e) {
+            log.info("잘못된 JWT 서명입니다.");
+            throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
+        } catch (ExpiredJwtException e) {
+            log.info("만료된 JWT 토큰입니다.");
+            throw new JwtExceptionHandler(AuthErrorStatus.TOKEN_EXPIRED.getMessage(), e);
+        } catch (UnsupportedJwtException e) {
+            log.info("지원되지 않는 JWT 토큰입니다.");
+            throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            log.info("JWT 토큰이 잘못되었습니다.");
+            throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
         }
     }
 

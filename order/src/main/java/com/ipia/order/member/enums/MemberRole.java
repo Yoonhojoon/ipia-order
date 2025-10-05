@@ -1,4 +1,7 @@
-package com.ipia.order.common.enums;
+package com.ipia.order.member.enums;
+
+import com.ipia.order.common.exception.member.MemberHandler;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 
 /**
  * 회원 권한 열거형
@@ -36,6 +39,6 @@ public enum MemberRole {
                 return role;
             }
         }
-        throw new IllegalArgumentException("Invalid role code: " + code);
+        throw new MemberHandler(MemberErrorStatus.INVALID_ROLE);
     }
 }

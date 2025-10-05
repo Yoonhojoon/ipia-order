@@ -1,11 +1,10 @@
 package com.ipia.order.auth.service;
 
-import com.ipia.order.auth.service.AuthService;
 import com.ipia.order.common.exception.auth.AuthHandler;
 import com.ipia.order.common.exception.auth.status.AuthErrorStatus;
 import com.ipia.order.common.util.PasswordEncoderUtil;
 import com.ipia.order.common.util.JwtUtil;
-import com.ipia.order.common.enums.MemberRole;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
