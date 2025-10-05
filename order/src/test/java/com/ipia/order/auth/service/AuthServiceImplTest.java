@@ -60,7 +60,7 @@ class AuthServiceImplTest {
             Member member = Member.createTestMember(1L, "홍길동", email, encodedPassword, MemberRole.USER);
             
             given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
-            given(member.checkPassword(password, passwordEncoder)).willReturn(true);
+            given(passwordEncoder.matches(password, encodedPassword)).willReturn(true);
             given(jwtUtil.generateAccessToken(1L, email, "USER")).willReturn(expectedToken);
 
             // When
@@ -101,7 +101,7 @@ class AuthServiceImplTest {
             Member member = Member.createTestMember(1L, "홍길동", email, encodedPassword, MemberRole.USER);
             
             given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
-            given(member.checkPassword(password, passwordEncoder)).willReturn(false);
+            given(passwordEncoder.matches(password, encodedPassword)).willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> authService.login(email, password))
