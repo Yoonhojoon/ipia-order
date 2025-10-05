@@ -2,6 +2,7 @@ package com.ipia.order.web.controller.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.member.domain.Member;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.web.dto.request.MemberSignupRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -13,9 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -51,7 +50,7 @@ class   MemberControllerIntegrationTest {
         String jsonRequest = objectMapper.writeValueAsString(request);
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
         when(memberService.signup(anyString(), anyString())).thenReturn(mockMember);
 
         // When & Then
@@ -104,7 +103,7 @@ class   MemberControllerIntegrationTest {
         String jsonRequest = objectMapper.writeValueAsString(request);
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
         when(memberService.signup(anyString(), anyString())).thenReturn(mockMember);
 
         // When & Then
@@ -122,7 +121,7 @@ class   MemberControllerIntegrationTest {
         Long memberId = 1L;
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
         when(memberService.findById(anyLong())).thenReturn(Optional.of(mockMember));
 
         // When & Then
@@ -139,7 +138,7 @@ class   MemberControllerIntegrationTest {
         String name = "홍길동";
 
         // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword");
+        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
         when(memberService.findByName(anyString())).thenReturn(Arrays.asList(mockMember));
 
         // When & Then

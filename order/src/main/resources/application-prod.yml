@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:mem:prod}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:password}
+  h2:
+    console:
+      enabled: false
+
+jwt:
+  secret: ${JWT_SECRET:production-jwt-secret-key-change-this-in-production}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}  # 1시간 (밀리초)
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:2592000000}  # 30일 (밀리초)
+
+logging:
+  level:
+    com.ipia.order: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

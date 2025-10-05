@@ -1,9 +1,11 @@
 package com.ipia.order.auth.service;
 
-import com.ipia.order.auth.service.AuthService;
 import com.ipia.order.common.exception.auth.AuthHandler;
+import com.ipia.order.common.exception.auth.JwtExceptionHandler;
 import com.ipia.order.common.exception.auth.status.AuthErrorStatus;
 import com.ipia.order.common.util.PasswordEncoderUtil;
+import com.ipia.order.common.util.JwtUtil;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -18,13 +20,16 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AuthenticationService 테스트")
+@DisplayName("AuthServceImpl 테스트")
 class AuthServiceImplTest {
 
     @Mock
@@ -32,6 +37,9 @@ class AuthServiceImplTest {
 
     @Mock
     private PasswordEncoderUtil passwordEncoder;
+
+    @Mock
+    private JwtUtil jwtUtil;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -46,11 +54,22 @@ class AuthServiceImplTest {
             // Given
             String email = "test@example.com";
             String password = "password123";
+            String encodedPassword = "encodedPassword";
+            String expectedToken = "jwt-token";
+            
+            Member member = Member.createTestMember(1L, "홍길동", email, encodedPassword, MemberRole.USER);
+            
+            given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+            given(passwordEncoder.matches(password, encodedPassword)).willReturn(true);
+            given(jwtUtil.generateAccessToken(1L, email, "USER")).willReturn(expectedToken);
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
-            assertThatThrownBy(() -> authService.login(email, password))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+            // When
+            String result = authService.login(email, password);
+
+            // Then
+            assertThat(result).isEqualTo(expectedToken);
+            then(memberRepository).should(times(1)).findByEmail(email);
+            then(jwtUtil).should(times(1)).generateAccessToken(1L, email, "USER");
         }
 
         @Test
@@ -60,10 +79,15 @@ class AuthServiceImplTest {
             String email = "nonexistent@example.com";
             String password = "password123";
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
+            given(memberRepository.findByEmail(email)).willReturn(Optional.empty());
+
+            // When & Then
             assertThatThrownBy(() -> authService.login(email, password))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.MEMBER_NOT_FOUND);
+                
+            then(memberRepository).should(times(1)).findByEmail(email);
+            then(jwtUtil).should(never()).generateAccessToken(anyLong(), anyString(), anyString());
         }
 
         @Test
@@ -72,11 +96,20 @@ class AuthServiceImplTest {
             // Given
             String email = "test@example.com";
             String password = "wrongpassword";
+            String encodedPassword = "encodedPassword";
+            
+            Member member = Member.createTestMember(1L, "홍길동", email, encodedPassword, MemberRole.USER);
+            
+            given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+            given(passwordEncoder.matches(password, encodedPassword)).willReturn(false);
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
+            // When & Then
             assertThatThrownBy(() -> authService.login(email, password))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.LOGIN_FAILED);
+                
+            then(memberRepository).should(times(1)).findByEmail(email);
+            then(jwtUtil).should(never()).generateAccessToken(anyLong(), anyString(), anyString());
         }
 
         @Test
@@ -85,11 +118,20 @@ class AuthServiceImplTest {
             // Given
             String email = "test@example.com";
             String password = "password123";
+            String encodedPassword = "encodedPassword";
+            
+            Member member = Member.createTestMember(1L, "홍길동", email, encodedPassword, MemberRole.USER);
+            member.deactivate(); // 비활성화
+            
+            given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
+            // When & Then
             assertThatThrownBy(() -> authService.login(email, password))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INACTIVE_MEMBER);
+                
+            then(memberRepository).should(times(1)).findByEmail(email);
+            then(jwtUtil).should(never()).generateAccessToken(anyLong(), anyString(), anyString());
         }
     }
 
@@ -102,11 +144,16 @@ class AuthServiceImplTest {
         void 로그아웃_성공() {
             // Given
             String token = "valid-jwt-token";
+            
+            doNothing().when(jwtUtil).validateToken(token);
+            given(jwtUtil.getTokenType(token)).willReturn("ACCESS");
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
-            assertThatThrownBy(() -> authService.logout(token))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+            // When & Then - 예외가 발생하지 않아야 함
+            assertThatCode(() -> authService.logout(token))
+                .doesNotThrowAnyException();
+                
+            then(jwtUtil).should(times(1)).validateToken(token);
+            then(jwtUtil).should(times(1)).getTokenType(token);
         }
 
         @Test
@@ -114,11 +161,16 @@ class AuthServiceImplTest {
         void 유효하지_않은_토큰_로그아웃_실패() {
             // Given
             String invalidToken = "invalid-token";
+            
+            doThrow(new JwtExceptionHandler("Invalid token")).when(jwtUtil).validateToken(invalidToken);
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
+            // When & Then
             assertThatThrownBy(() -> authService.logout(invalidToken))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INVALID_TOKEN);
+                
+            then(jwtUtil).should(times(1)).validateToken(invalidToken);
+            then(jwtUtil).should(never()).getTokenType(anyString());
         }
 
         @Test
@@ -126,11 +178,16 @@ class AuthServiceImplTest {
         void 만료된_토큰_로그아웃_실패() {
             // Given
             String expiredToken = "expired-jwt-token";
+            
+            doThrow(new JwtExceptionHandler("Token expired")).when(jwtUtil).validateToken(expiredToken);
 
-            // When & Then - Red 테스트: 구현되지 않았으므로 UnsupportedOperationException 발생 예상
+            // When & Then
             assertThatThrownBy(() -> authService.logout(expiredToken))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INVALID_TOKEN);
+                
+            then(jwtUtil).should(times(1)).validateToken(expiredToken);
+            then(jwtUtil).should(never()).getTokenType(anyString());
         }
     }
 }

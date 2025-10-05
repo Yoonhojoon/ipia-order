@@ -5,9 +5,14 @@ import java.time.LocalDateTime;
 import org.springframework.util.StringUtils;
 
 import com.ipia.order.common.entity.BaseEntity;
+import com.ipia.order.common.exception.member.MemberHandler;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
+import com.ipia.order.member.enums.MemberRole;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,48 +47,53 @@ public class Member extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private MemberRole role = MemberRole.USER;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
     @Builder
-    private Member(String name, String email, String password) {
+    private Member(String name, String email, String password, MemberRole role) {
         validateName(name);
         validateEmail(email);
         validatePassword(password);
         this.name = name;
         this.email = email;
         this.password = password; // 이미 암호화된 비밀번호를 받음
+        this.role = role != null ? role : MemberRole.USER;
     }
 
     private void validateName(String name) {
         if (!StringUtils.hasText(name)) {
-            throw new IllegalArgumentException("회원 이름은 필수입니다");
+            throw new MemberHandler(MemberErrorStatus.NAME_REQUIRED);
         }
         if (name.length() > 100) {
-            throw new IllegalArgumentException("회원 이름은 100자를 초과할 수 없습니다");
+            throw new MemberHandler(MemberErrorStatus.NAME_TOO_LONG);
         }
     }
 
     private void validateEmail(String email) {
         if (!StringUtils.hasText(email)) {
-            throw new IllegalArgumentException("이메일은 필수입니다");
+            throw new MemberHandler(MemberErrorStatus.EMAIL_REQUIRED);
         }
         if (email.length() > 200) {
-            throw new IllegalArgumentException("이메일은 200자를 초과할 수 없습니다");
+            throw new MemberHandler(MemberErrorStatus.EMAIL_TOO_LONG);
         }
         // 간단한 이메일 형식 검증
         if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다");
+            throw new MemberHandler(MemberErrorStatus.EMAIL_FORMAT_INVALID);
         }
     }
 
     private void validatePassword(String password) {
         if (!StringUtils.hasText(password)) {
-            throw new IllegalArgumentException("비밀번호는 필수입니다");
+            throw new MemberHandler(MemberErrorStatus.PASSWORD_REQUIRED);
         }
         // 암호화된 비밀번호는 BCrypt 해시 형태이므로 길이 제한을 늘림
         if (password.length() > 255) {
-            throw new IllegalArgumentException("비밀번호는 255자를 초과할 수 없습니다");
+            throw new MemberHandler(MemberErrorStatus.PASSWORD_TOO_LONG);
         }
     }
 
@@ -107,7 +117,7 @@ public class Member extends BaseEntity {
      */
     public void deactivate() {
         if (!this.isActive) {
-            throw new IllegalStateException("이미 탈퇴한 회원입니다");
+            throw new MemberHandler(MemberErrorStatus.ALREADY_INACTIVE);
         }
         this.isActive = false;
         this.deletedAt = LocalDateTime.now();
@@ -136,13 +146,15 @@ public class Member extends BaseEntity {
      * @param name 회원 이름
      * @param email 이메일
      * @param password 비밀번호 (암호화된 상태)
+     * @param role 권한
      * @return 테스트용 Member 객체
      */
-    public static Member createTestMember(Long id, String name, String email, String password) {
+    public static Member createTestMember(Long id, String name, String email, String password, MemberRole role) {
         Member member = Member.builder()
                 .name(name)
                 .email(email)
                 .password(password)
+                .role(role)
                 .build();
         
         // Reflection을 사용하여 필드 설정
