@@ -12,7 +12,8 @@ public enum AuthErrorStatus implements ErrorResponse {
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH4003", "토큰이 만료되었습니다."),
     TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH4004", "토큰이 존재하지 않습니다."),
     MEMBER_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH4005", "회원 정보를 찾을 수 없습니다."),
-    INACTIVE_MEMBER(HttpStatus.UNAUTHORIZED, "AUTH4006", "비활성화된 회원입니다.");
+    INACTIVE_MEMBER(HttpStatus.UNAUTHORIZED, "AUTH4006", "비활성화된 회원입니다."),
+    MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "AUTH4007", "이미 존재하는 회원입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

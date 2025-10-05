@@ -6,13 +6,7 @@ import java.util.Optional;
 
 public interface MemberService {
     
-    /**
-     * 멤버 가입
-     * @param name 회원 이름
-     * @param email 이메일
-     * @return 가입된 회원 정보
-     */
-    Member signup(String name, String email);
+    // 회원가입은 AuthService로 이전되었습니다.
 
     /**
      * ID로 멤버 조회

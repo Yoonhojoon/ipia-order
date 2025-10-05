@@ -6,7 +6,6 @@ import com.ipia.order.common.exception.member.status.MemberSuccessStatus;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.web.dto.request.MemberPasswordRequest;
-import com.ipia.order.web.dto.request.MemberSignupRequest;
 import com.ipia.order.web.dto.request.MemberUpdateRequest;
 import com.ipia.order.web.dto.response.MemberResponse;
 import jakarta.validation.Valid;
@@ -26,16 +25,7 @@ public class MemberController {
 
     private final MemberService memberService;
 
-    /**
-     * 회원가입
-     * POST /api/members
-     */
-    @PostMapping
-    public ResponseEntity<ApiResponse<MemberResponse>> signup(@Valid @RequestBody MemberSignupRequest request) {
-        Member member = memberService.signup(request.getName(), request.getEmail());
-        MemberResponse response = MemberResponse.from(member);
-        return ApiResponse.onSuccess(MemberSuccessStatus.SIGN_UP_SUCCESS, response);
-    }
+    // 회원가입 엔드포인트는 AuthController로 이전되었습니다.
 
     /**
      * 회원 조회 (ID)

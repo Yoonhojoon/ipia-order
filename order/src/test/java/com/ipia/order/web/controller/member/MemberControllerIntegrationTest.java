@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.member.service.MemberService;
-import com.ipia.order.web.dto.request.MemberSignupRequest;
+import com.ipia.order.common.util.JwtUtil;
+// signup 관련 테스트는 Auth로 이전됨
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Arrays;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -39,48 +39,19 @@ class   MemberControllerIntegrationTest {
     @MockitoBean
     private MemberService memberService;
 
-    @Test
-    @DisplayName("API 응답 구조 검증 - 성공 케이스")
-    void apiResponseStructure_Success() throws Exception {
-        // Given
-        MemberSignupRequest request = MemberSignupRequest.builder()
-                .name("홍길동")
-                .email("hong@example.com")
-                .build();
-        String jsonRequest = objectMapper.writeValueAsString(request);
+    @MockitoBean
+    private JwtUtil jwtUtil;
 
-        // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
-        when(memberService.signup(anyString(), anyString())).thenReturn(mockMember);
-
-        // When & Then
-        mockMvc.perform(post("/api/members")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonRequest))
-                .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                // ApiResponse 구조 검증
-                .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.code").exists())
-                .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.data").exists())
-                // MemberResponse 구조 검증
-                .andExpect(jsonPath("$.data.id").exists())
-                .andExpect(jsonPath("$.data.name").value("홍길동"))
-                .andExpect(jsonPath("$.data.email").value("hong@example.com"))
-                .andExpect(jsonPath("$.data.isActive").exists())
-                .andExpect(jsonPath("$.data.createdAt").exists())
-                .andExpect(jsonPath("$.data.updatedAt").exists());
-    }
+    // 회원가입 성공 케이스는 AuthController로 이전됨
 
     @Test
-    @DisplayName("API 응답 구조 검증 - 실패 케이스")
+    @DisplayName("API 응답 구조 검증 - 실패 케이스 (PUT /api/members/{id})")
     void apiResponseStructure_Failure() throws Exception {
         // Given
-        String invalidRequest = "{ \"name\": \"\", \"email\": \"invalid\" }";
+        String invalidRequest = "{ }";
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest))
                 .andExpect(status().isBadRequest())
@@ -93,25 +64,19 @@ class   MemberControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("HTTP 헤더 검증 - Content-Type")
+    @DisplayName("HTTP 헤더 검증 - Content-Type (PUT /api/members/{id})")
     void httpHeaders_ContentType() throws Exception {
         // Given
-        MemberSignupRequest request = MemberSignupRequest.builder()
-                .name("홍길동")
-                .email("hong@example.com")
-                .build();
-        String jsonRequest = objectMapper.writeValueAsString(request);
-
-        // Mock 설정
-        Member mockMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
-        when(memberService.signup(anyString(), anyString())).thenReturn(mockMember);
+        String jsonRequest = objectMapper.writeValueAsString(java.util.Map.of("name", "홍길동"));
+        Member updated = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword", MemberRole.USER);
+        when(memberService.updateNickname(anyLong(), anyString())).thenReturn(updated);
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Content-Type", "application/json"));
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
     }
 
     @Test
@@ -152,21 +117,5 @@ class   MemberControllerIntegrationTest {
     }
 
 
-    @Test
-    @DisplayName("JSON 직렬화/역직렬화 검증")
-    void jsonSerialization_Validation() throws Exception {
-        // Given
-        MemberSignupRequest request = MemberSignupRequest.builder()
-                .name("홍길동")
-                .email("hong@example.com")
-                .build();
-
-        // When
-        String jsonRequest = objectMapper.writeValueAsString(request);
-        MemberSignupRequest deserialized = objectMapper.readValue(jsonRequest, MemberSignupRequest.class);
-
-        // Then
-        assert deserialized.getName().equals("홍길동");
-        assert deserialized.getEmail().equals("hong@example.com");
-    }
+    // 회원가입 DTO 직렬화 테스트는 Auth 쪽으로 이전
 }

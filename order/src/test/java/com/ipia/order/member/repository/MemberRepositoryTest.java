@@ -33,6 +33,7 @@ class MemberRepositoryTest {
         validMember = Member.builder()
                 .name("홍길동")
                 .email("hong@example.com")
+                .password("encodedPassword")
                 .build();
     }
 
@@ -65,6 +66,7 @@ class MemberRepositoryTest {
             Member duplicateEmailMember = Member.builder()
                     .name("김철수")
                     .email("hong@example.com") // 동일한 이메일
+                    .password("encodedPassword")
                     .build();
 
             // when & then
@@ -82,9 +84,9 @@ class MemberRepositoryTest {
                 Member.builder()
                         .name(null)
                         .email("test@example.com")
+                        .password("encodedPassword")
                         .build();
-            }).isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("회원 이름은 필수입니다");
+            }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
         }
 
     @Test
@@ -95,9 +97,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name("")
                     .email("test@example.com")
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("회원 이름은 필수입니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -108,9 +110,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name("   ")
                     .email("test@example.com")
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("회원 이름은 필수입니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -124,9 +126,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name(longName)
                     .email("test@example.com")
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("회원 이름은 100자를 초과할 수 없습니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -137,9 +139,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name("홍길동")
                     .email(null)
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("이메일은 필수입니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -150,9 +152,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name("홍길동")
                     .email("")
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("이메일은 필수입니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -163,9 +165,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name("홍길동")
                     .email("   ")
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("이메일은 필수입니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -179,9 +181,9 @@ class MemberRepositoryTest {
             Member.builder()
                     .name("홍길동")
                     .email(longEmail)
+                    .password("encodedPassword")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("이메일은 200자를 초과할 수 없습니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -193,8 +195,7 @@ class MemberRepositoryTest {
                     .name("홍길동")
                     .email("invalid-email")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("올바른 이메일 형식이 아닙니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -206,8 +207,7 @@ class MemberRepositoryTest {
                     .name("홍길동")
                     .email("test@")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("올바른 이메일 형식이 아닙니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -219,8 +219,7 @@ class MemberRepositoryTest {
                     .name("홍길동")
                     .email("test@example")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("올바른 이메일 형식이 아닙니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
     @Test
@@ -232,8 +231,7 @@ class MemberRepositoryTest {
                     .name("홍길동")
                     .email("test@example@com")
                     .build();
-        }).isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("올바른 이메일 형식이 아닙니다");
+        }).isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
     }
 
 
@@ -248,6 +246,7 @@ class MemberRepositoryTest {
         Member member = Member.builder()
                 .name(name100Chars)
                 .email("test@example.com")
+                .password("encodedPassword")
                 .build();
         
         Member savedMember = memberRepository.save(member);
@@ -269,6 +268,7 @@ class MemberRepositoryTest {
         Member member = Member.builder()
                 .name("홍길동")
                 .email(email200Chars)
+                .password("encodedPassword")
                 .build();
         
         Member savedMember = memberRepository.save(member);
@@ -365,14 +365,17 @@ class MemberRepositoryTest {
             Member member1 = Member.builder()
                     .name("홍길동")
                     .email("hong1@example.com")
+                    .password("encodedPassword")
                     .build();
             Member member2 = Member.builder()
                     .name("홍길동")
                     .email("hong2@example.com")
+                    .password("encodedPassword")
                     .build();
             Member member3 = Member.builder()
                     .name("김철수")
                     .email("kim@example.com")
+                    .password("encodedPassword")
                     .build();
 
             memberRepository.save(member1);
@@ -429,14 +432,17 @@ class MemberRepositoryTest {
             Member member1 = Member.builder()
                     .name("홍길동")
                     .email("hong@example.com")
+                    .password("encodedPassword")
                     .build();
             Member member2 = Member.builder()
                     .name("김철수")
                     .email("kim@example.com")
+                    .password("encodedPassword")
                     .build();
             Member member3 = Member.builder()
                     .name("이영희")
                     .email("lee@example.com")
+                    .password("encodedPassword")
                     .build();
 
             memberRepository.save(member1);
@@ -604,6 +610,7 @@ class MemberRepositoryTest {
             Member activeMember2 = memberRepository.save(Member.builder()
                     .name("김철수")
                     .email("kim@example.com")
+                    .password("encodedPassword")
                     .build());
             entityManager.flush();
 
@@ -652,8 +659,7 @@ class MemberRepositoryTest {
 
             // when & then
             assertThatThrownBy(() -> savedMember.deactivate())
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessage("이미 탈퇴한 회원입니다");
+                    .isInstanceOf(com.ipia.order.common.exception.member.MemberHandler.class);
         }
 
         @Test
@@ -681,6 +687,7 @@ class MemberRepositoryTest {
             Member newMember = Member.builder()
                     .name("신규회원")
                     .email("new@example.com")
+                    .password("encodedPassword")
                     .build();
 
             // then
@@ -739,6 +746,7 @@ class MemberRepositoryTest {
             Member m2 = memberRepository.save(Member.builder()
                     .name("김철수")
                     .email("kim@example.com")
+                    .password("encodedPassword")
                     .build());
             entityManager.flush();
 

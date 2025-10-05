@@ -45,7 +45,7 @@ class MemberControllerTest {
     void setUp() {
         // 공통 Mock 설정
         Member mockMember = createMockMember(1L, "홍길동", "hong@example.com");
-        Mockito.when(memberService.signup(Mockito.anyString(), Mockito.anyString())).thenReturn(mockMember);
+        // 회원가입 관련 Mock 제거 (회원가입은 Auth로 이전)
         Mockito.when(memberService.findById(Mockito.eq(1L))).thenReturn(Optional.of(mockMember));
         Mockito.when(memberService.findById(Mockito.eq(999L))).thenReturn(Optional.empty());
         Mockito.when(memberService.findByEmail(Mockito.anyString())).thenReturn(Optional.of(mockMember));
@@ -63,42 +63,7 @@ class MemberControllerTest {
         Mockito.doThrow(new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND)).when(memberService).withdraw(Mockito.eq(999L));
     }
 
-    @Test
-    @DisplayName("회원가입 API 테스트 - 성공")
-    void signup_Success() throws Exception {
-        // Given
-        MemberSignupRequest request = createSignupRequest("홍길동", "hong@example.com");
-        String jsonRequest = createJsonRequest(request);
-
-        // When & Then
-        mockMvc.perform(post("/api/members")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonRequest))
-                .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.data.name").value("홍길동"))
-                .andExpect(jsonPath("$.data.email").value("hong@example.com"));
-    }
-
-    @Test
-    @DisplayName("회원가입 API 테스트 - 실패 (잘못된 입력값)")
-    void signup_Failure_InvalidInput() throws Exception {
-        // Given
-        MemberSignupRequest request = createSignupRequest("", "invalid-email");
-        String jsonRequest = createJsonRequest(request);
-
-        // When & Then
-        mockMvc.perform(post("/api/members")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonRequest))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.isSuccess").value(false))
-                .andExpect(jsonPath("$.code").exists())
-                .andExpect(jsonPath("$.message").exists());
-    }
+    // 회원가입 API 테스트 제거 (회원가입은 Auth로 이전)
 
     @Test
     @DisplayName("회원 조회 API 테스트 - 성공")
