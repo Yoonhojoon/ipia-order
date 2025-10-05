@@ -46,31 +46,36 @@ class AuthServiceImplTest {
     private AuthServiceImpl authService;
 
     @Nested
-    @DisplayName("로그인 테스트")
+    @DisplayName("로그인/토큰 발급 테스트")
     class LoginTest {
 
         @Test
-        @DisplayName("정상적인 이메일과 비밀번호로 로그인 성공")
+        @DisplayName("정상적인 이메일과 비밀번호로 로그인/토큰 발급 성공")
         void 로그인_성공() {
             // Given
             String email = "test@example.com";
             String password = "password123";
             String encodedPassword = "encodedPassword";
-            String expectedToken = "jwt-token";
+            String expectedAccess = "access-token";
+            String expectedRefresh = "refresh-token";
             
             Member member = Member.createTestMember(1L, "홍길동", email, encodedPassword, MemberRole.USER);
             
             given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
             given(passwordEncoder.matches(password, encodedPassword)).willReturn(true);
-            given(jwtUtil.generateAccessToken(1L, email, "USER")).willReturn(expectedToken);
+            given(jwtUtil.generateAccessToken(1L, email, "USER")).willReturn(expectedAccess);
+            given(jwtUtil.generateRefreshToken(1L)).willReturn(expectedRefresh);
 
             // When
-            String result = authService.login(email, password);
+            var result = authService.login(email, password);
 
             // Then
-            assertThat(result).isEqualTo(expectedToken);
+            assertThat(result.getAccessToken()).isEqualTo(expectedAccess);
+            assertThat(result.getRefreshToken()).isEqualTo(expectedRefresh);
+            assertThat(result.getEmail()).isEqualTo(email);
             then(memberRepository).should(times(1)).findByEmail(email);
             then(jwtUtil).should(times(1)).generateAccessToken(1L, email, "USER");
+            then(jwtUtil).should(times(1)).generateRefreshToken(1L);
         }
 
         @Test
@@ -242,6 +247,96 @@ class AuthServiceImplTest {
             then(memberRepository).should(times(1)).existsByEmail(email);
             then(passwordEncoder).should(never()).encode(anyString());
             then(memberRepository).should(never()).save(any(Member.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("리프레시 토큰 재발급 테스트")
+    class RefreshTest {
+
+        @Test
+        @DisplayName("유효한 리프레시 토큰으로 재발급 성공")
+        void 리프레시_성공() {
+            // Given
+            String refreshToken = "valid-refresh";
+            Member member = Member.createTestMember(1L, "홍길동", "test@example.com", "enc", MemberRole.USER);
+
+            doNothing().when(jwtUtil).validateToken(refreshToken);
+            given(jwtUtil.getTokenType(refreshToken)).willReturn("REFRESH");
+            given(jwtUtil.getUserIdFromToken(refreshToken)).willReturn(1L);
+            given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+            given(jwtUtil.generateAccessToken(1L, "test@example.com", "USER")).willReturn("new-access");
+            given(jwtUtil.generateRefreshToken(1L)).willReturn("new-refresh");
+
+            // When
+            var result = authService.refresh(refreshToken);
+
+            // Then
+            assertThat(result.getAccessToken()).isEqualTo("new-access");
+            assertThat(result.getRefreshToken()).isEqualTo("new-refresh");
+            assertThat(result.getEmail()).isEqualTo("test@example.com");
+        }
+
+        @Test
+        @DisplayName("무효 토큰이면 INVALID_TOKEN 예외")
+        void 리프레시_실패_무효토큰() {
+            // Given
+            String refreshToken = "invalid";
+            doThrow(new JwtExceptionHandler("invalid")).when(jwtUtil).validateToken(refreshToken);
+
+            // When & Then
+            assertThatThrownBy(() -> authService.refresh(refreshToken))
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INVALID_TOKEN);
+        }
+
+        @Test
+        @DisplayName("토큰 타입이 REFRESH가 아니면 INVALID_TOKEN")
+        void 리프레시_실패_토큰타입() {
+            // Given
+            String refreshToken = "access-token";
+            doNothing().when(jwtUtil).validateToken(refreshToken);
+            given(jwtUtil.getTokenType(refreshToken)).willReturn("ACCESS");
+
+            // When & Then
+            assertThatThrownBy(() -> authService.refresh(refreshToken))
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INVALID_TOKEN);
+        }
+
+        @Test
+        @DisplayName("비활성 회원이면 INACTIVE_MEMBER 예외")
+        void 리프레시_실패_비활성회원() {
+            // Given
+            String refreshToken = "valid-refresh";
+            Member member = Member.createTestMember(1L, "홍길동", "test@example.com", "enc", MemberRole.USER);
+            member.deactivate();
+
+            doNothing().when(jwtUtil).validateToken(refreshToken);
+            given(jwtUtil.getTokenType(refreshToken)).willReturn("REFRESH");
+            given(jwtUtil.getUserIdFromToken(refreshToken)).willReturn(1L);
+            given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+            // When & Then
+            assertThatThrownBy(() -> authService.refresh(refreshToken))
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INACTIVE_MEMBER);
+        }
+
+        @Test
+        @DisplayName("회원이 없으면 MEMBER_NOT_FOUND 예외")
+        void 리프레시_실패_회원없음() {
+            // Given
+            String refreshToken = "valid-refresh";
+            doNothing().when(jwtUtil).validateToken(refreshToken);
+            given(jwtUtil.getTokenType(refreshToken)).willReturn("REFRESH");
+            given(jwtUtil.getUserIdFromToken(refreshToken)).willReturn(1L);
+            given(memberRepository.findById(1L)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> authService.refresh(refreshToken))
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.MEMBER_NOT_FOUND);
         }
     }
 }

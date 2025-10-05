@@ -1,10 +1,13 @@
 package com.ipia.order.web.controller.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ipia.order.member.domain.Member;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.web.controller.TestConfig;
 import com.ipia.order.auth.service.AuthService;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.common.util.JwtUtil;
+import com.ipia.order.web.dto.response.auth.LoginResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,11 +53,14 @@ class AuthControllerTest {
         @DisplayName("이메일/비밀번호 입력 시 200을 기대한다")
         void login_shouldReturn200_whenValid() throws Exception {
             // Given
-            when(authService.login("test@example.com", "pass1234")).thenReturn("access-token");
-            when(jwtUtil.getUserIdFromToken("access-token")).thenReturn(1L);
-            when(jwtUtil.getEmailFromToken("access-token")).thenReturn("test@example.com");
-            when(jwtUtil.getRoleFromToken("access-token")).thenReturn("USER");
-            when(jwtUtil.generateRefreshToken(1L)).thenReturn("refresh-token");
+            when(authService.login("test@example.com", "pass1234"))
+                .thenReturn(new LoginResponse(
+                    "access-token",
+                    "refresh-token",
+                    1L,
+                    "test@example.com",
+                    "USER"
+                ));
             
             String body = "{\"email\":\"test@example.com\",\"password\":\"pass1234\"}";
             
@@ -105,16 +111,15 @@ class AuthControllerTest {
         @DisplayName("유효한 리프레시 토큰 시 200을 기대한다")
         void refresh_shouldReturn200_whenValidToken() throws Exception {
             // Given
-            when(jwtUtil.getTokenType("valid-refresh-token")).thenReturn("REFRESH");
-            when(jwtUtil.getUserIdFromToken("valid-refresh-token")).thenReturn(1L);
-            when(memberService.findById(1L)).thenReturn(java.util.Optional.of(
-                com.ipia.order.member.domain.Member.createTestMember(
-                    1L, "Test User", "test@example.com", "encoded-password", 
-                    com.ipia.order.member.enums.MemberRole.USER
+            when(authService.refresh("valid-refresh-token")).thenReturn(
+                new LoginResponse(
+                    "new-access-token",
+                    "new-refresh-token",
+                    1L,
+                    "test@example.com",
+                    "USER"
                 )
-            ));
-            when(jwtUtil.generateAccessToken(1L, "test@example.com", "USER")).thenReturn("new-access-token");
-            when(jwtUtil.generateRefreshToken(1L)).thenReturn("new-refresh-token");
+            );
             
             String body = "{\"token\":\"valid-refresh-token\"}";
             
@@ -131,7 +136,7 @@ class AuthControllerTest {
         @DisplayName("만료/무효 토큰 시 401을 기대한다")
         void refresh_shouldReturn401_whenInvalidToken() throws Exception {
             // Given
-            doThrow(new RuntimeException("Invalid token")).when(jwtUtil).validateToken("invalid-refresh-token");
+            doThrow(new RuntimeException("Invalid token")).when(authService).refresh("invalid-refresh-token");
             
             String body = "{\"token\":\"invalid-refresh-token\"}";
             
@@ -173,10 +178,9 @@ class AuthControllerTest {
         void register_shouldReturn200_whenValid() throws Exception {
             // Given
             when(authService.register(eq("홍길동"), eq("test@example.com"), eq("pass1234")))
-                .thenReturn(
-                    com.ipia.order.member.domain.Member.createTestMember(
+                .thenReturn(Member.createTestMember(
                         1L, "홍길동", "test@example.com", "encoded", 
-                        com.ipia.order.member.enums.MemberRole.USER
+                        MemberRole.USER
                     )
                 );
 
