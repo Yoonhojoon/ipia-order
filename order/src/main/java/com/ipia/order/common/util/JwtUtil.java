@@ -138,27 +138,26 @@ public class JwtUtil {
      * @param token JWT 토큰
      * @return 유효 여부
      */
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (SecurityException | MalformedJwtException e) {
-            log.info("잘못된 JWT 서명입니다.");
-            throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
-        } catch (ExpiredJwtException e) {
-            log.info("만료된 JWT 토큰입니다.");
-            throw new JwtExceptionHandler(AuthErrorStatus.TOKEN_EXPIRED.getMessage(), e);
-        } catch (UnsupportedJwtException e) {
-            log.info("지원되지 않는 JWT 토큰입니다.");
-            throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
-        } catch (IllegalArgumentException e) {
-            log.info("JWT 토큰이 잘못되었습니다.");
-            throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
-        }
+public void validateToken(String token) {
+    try {
+        Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token);
+    } catch (SecurityException | MalformedJwtException e) {
+        log.info("잘못된 JWT 서명입니다.");
+        throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
+    } catch (ExpiredJwtException e) {
+        log.info("만료된 JWT 토큰입니다.");
+        throw new JwtExceptionHandler(AuthErrorStatus.TOKEN_EXPIRED.getMessage(), e);
+    } catch (UnsupportedJwtException e) {
+        log.info("지원되지 않는 JWT 토큰입니다.");
+        throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
+    } catch (IllegalArgumentException e) {
+        log.info("JWT 토큰이 잘못되었습니다.");
+        throw new JwtExceptionHandler(AuthErrorStatus.INVALID_TOKEN.getMessage(), e);
     }
+}
 
     /**
      * 토큰 만료 여부 확인
