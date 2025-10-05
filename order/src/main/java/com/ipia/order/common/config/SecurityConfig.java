@@ -1,6 +1,7 @@
 package com.ipia.order.common.config;
 
 import com.ipia.order.common.filter.JwtAuthenticationFilter;
+import com.ipia.order.common.exception.SecurityExceptionHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SecurityExceptionHandler securityExceptionHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -64,7 +66,13 @@ public class SecurityConfig {
             )
             
             // H2 콘솔을 위한 프레임 옵션 설정
-            .headers(headers -> headers.frameOptions().disable())
+            .headers(headers -> headers.frameOptions().sameOrigin())
+            
+            // 예외 처리 핸들러 설정
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(securityExceptionHandler)
+                .accessDeniedHandler(securityExceptionHandler)
+            )
             
             // JWT 필터 추가
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
