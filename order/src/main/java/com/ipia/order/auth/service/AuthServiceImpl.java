@@ -5,6 +5,7 @@ import com.ipia.order.common.exception.auth.status.AuthErrorStatus;
 import com.ipia.order.common.util.PasswordEncoderUtil;
 import com.ipia.order.common.util.JwtUtil;
 import com.ipia.order.member.domain.Member;
+import com.ipia.order.web.dto.response.auth.LoginResponse;
 import com.ipia.order.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,29 +21,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoderUtil passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    @Override
-    public String login(String email, String password) {
-        // 1. 이메일로 회원 조회
-        Member member = memberRepository.findByEmail(email)
-                .orElseThrow(() -> new AuthHandler(AuthErrorStatus.MEMBER_NOT_FOUND));
-
-        // 2. 회원 활성화 상태 확인
-        if (!member.isActive()) {
-            throw new AuthHandler(AuthErrorStatus.INACTIVE_MEMBER);
-        }
-
-        // 3. 비밀번호 검증
-        if (!member.checkPassword(password, passwordEncoder)) {
-            throw new AuthHandler(AuthErrorStatus.LOGIN_FAILED);
-        }
-
-        // 4. JWT 토큰 생성 및 반환
-        return jwtUtil.generateAccessToken(
-                member.getId(),
-                member.getEmail(),
-                member.getRole().getCode()
-        );
-    }
+    // removed legacy login(email,password)
 
     @Override
     public void logout(String token) {
@@ -83,5 +62,80 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         return memberRepository.save(member);
+    }
+
+    @Override
+    public LoginResponse login(String email, String password) {
+        // 1. 이메일로 회원 조회
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthHandler(AuthErrorStatus.MEMBER_NOT_FOUND));
+
+        // 2. 회원 활성화 상태 확인
+        if (!member.isActive()) {
+            throw new AuthHandler(AuthErrorStatus.INACTIVE_MEMBER);
+        }
+
+        // 3. 비밀번호 검증
+        if (!member.checkPassword(password, passwordEncoder)) {
+            throw new AuthHandler(AuthErrorStatus.LOGIN_FAILED);
+        }
+
+        // 4. JWT 토큰 생성 (Access / Refresh)
+        String accessToken = jwtUtil.generateAccessToken(
+                member.getId(),
+                member.getEmail(),
+                member.getRole().getCode()
+        );
+        String refreshToken = jwtUtil.generateRefreshToken(member.getId());
+
+        // 5. 응답 DTO 구성
+        return new LoginResponse(
+                accessToken,
+                refreshToken,
+                member.getId(),
+                member.getEmail(),
+                member.getRole().getCode()
+        );
+    }
+
+    @Override
+    public LoginResponse refresh(String refreshToken) {
+        // 1) 토큰 유효성 검사에서 발생하는 예외만 INVALID_TOKEN으로 매핑
+        try {
+            jwtUtil.validateToken(refreshToken);
+        } catch (Exception e) {
+            throw new AuthHandler(AuthErrorStatus.INVALID_TOKEN);
+        }
+
+        // 2) 토큰 타입 체크
+        String tokenType = jwtUtil.getTokenType(refreshToken);
+        if (!"REFRESH".equals(tokenType)) {
+            throw new AuthHandler(AuthErrorStatus.INVALID_TOKEN);
+        }
+
+        // 3) 사용자 조회 및 상태 확인
+        Long memberId = jwtUtil.getUserIdFromToken(refreshToken);
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new AuthHandler(AuthErrorStatus.MEMBER_NOT_FOUND));
+        if (!member.isActive()) {
+            throw new AuthHandler(AuthErrorStatus.INACTIVE_MEMBER);
+        }
+
+        // 4) 새 토큰 발급
+        String newAccessToken = jwtUtil.generateAccessToken(
+                member.getId(),
+                member.getEmail(),
+                member.getRole().getCode()
+        );
+        String newRefreshToken = jwtUtil.generateRefreshToken(memberId);
+
+        // 5) 응답 반환
+        return new LoginResponse(
+                newAccessToken,
+                newRefreshToken,
+                member.getId(),
+                member.getEmail(),
+                member.getRole().getCode()
+        );
     }
 }
