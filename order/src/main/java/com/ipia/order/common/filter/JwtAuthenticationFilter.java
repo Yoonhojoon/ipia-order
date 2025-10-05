@@ -36,29 +36,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         if (token != null && !isPublicEndpoint(request)) {
             try {
-                // 토큰 유효성 검증
-                if (jwtUtil.validateToken(token) && !jwtUtil.isTokenExpired(token)) {
-                    // 토큰에서 사용자 정보 추출
-                    Long userId = jwtUtil.getUserIdFromToken(token);
-                    String email = jwtUtil.getEmailFromToken(token);
-                    String role = jwtUtil.getRoleFromToken(token);
-                    
-                    // Spring Security 인증 객체 생성
-                    UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(
-                            email,
-                            null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-                        );
-                    
-                    // SecurityContext에 인증 정보 설정
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    
-                    log.debug("JWT 인증 성공: userId={}, email={}, role={}", userId, email, role);
-                } else {
-                    log.warn("유효하지 않은 JWT 토큰: {}", token);
-                    throw new JwtExceptionHandler("유효하지 않은 JWT 토큰");
-                }
+                // 토큰 유효성 검증 (만료 여부 포함)
+                jwtUtil.validateToken(token);
+                
+                // 토큰에서 사용자 정보 추출
+                Long userId = jwtUtil.getUserIdFromToken(token);
+                String email = jwtUtil.getEmailFromToken(token);
+                String role = jwtUtil.getRoleFromToken(token);
+                
+                // Spring Security 인증 객체 생성
+                UsernamePasswordAuthenticationToken authentication = 
+                    new UsernamePasswordAuthenticationToken(
+                        email,
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
+                
+                // SecurityContext에 인증 정보 설정
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                
+                log.debug("JWT 인증 성공: userId={}, email={}, role={}", userId, email, role);
             } catch (Exception e) {
                 log.error("JWT 토큰 처리 중 오류 발생", e);
                 throw new JwtExceptionHandler("JWT 토큰 처리 중 오류 발생: " + e.getMessage(), e);

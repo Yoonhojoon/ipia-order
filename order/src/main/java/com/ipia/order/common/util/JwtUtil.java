@@ -159,19 +159,6 @@ public void validateToken(String token) {
     }
 }
 
-    /**
-     * 토큰 만료 여부 확인
-     * @param token JWT 토큰
-     * @return 만료 여부
-     */
-    public boolean isTokenExpired(String token) {
-        try {
-            Claims claims = getClaimsFromToken(token);
-            return claims.getExpiration().before(new Date());
-        } catch (Exception e) {
-            return true;
-        }
-    }
 
     /**
      * 토큰에서 Claims 추출

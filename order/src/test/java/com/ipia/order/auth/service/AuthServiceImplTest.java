@@ -1,6 +1,7 @@
 package com.ipia.order.auth.service;
 
 import com.ipia.order.common.exception.auth.AuthHandler;
+import com.ipia.order.common.exception.auth.JwtExceptionHandler;
 import com.ipia.order.common.exception.auth.status.AuthErrorStatus;
 import com.ipia.order.common.util.PasswordEncoderUtil;
 import com.ipia.order.common.util.JwtUtil;
@@ -24,6 +25,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthServceImpl 테스트")
@@ -142,8 +145,7 @@ class AuthServiceImplTest {
             // Given
             String token = "valid-jwt-token";
             
-            given(jwtUtil.validateToken(token)).willReturn(true);
-            given(jwtUtil.isTokenExpired(token)).willReturn(false);
+            doNothing().when(jwtUtil).validateToken(token);
             given(jwtUtil.getTokenType(token)).willReturn("ACCESS");
 
             // When & Then - 예외가 발생하지 않아야 함
@@ -151,7 +153,6 @@ class AuthServiceImplTest {
                 .doesNotThrowAnyException();
                 
             then(jwtUtil).should(times(1)).validateToken(token);
-            then(jwtUtil).should(times(1)).isTokenExpired(token);
             then(jwtUtil).should(times(1)).getTokenType(token);
         }
 
@@ -161,7 +162,7 @@ class AuthServiceImplTest {
             // Given
             String invalidToken = "invalid-token";
             
-            given(jwtUtil.validateToken(invalidToken)).willReturn(false);
+            doThrow(new JwtExceptionHandler("Invalid token")).when(jwtUtil).validateToken(invalidToken);
 
             // When & Then
             assertThatThrownBy(() -> authService.logout(invalidToken))
@@ -169,7 +170,6 @@ class AuthServiceImplTest {
                 .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INVALID_TOKEN);
                 
             then(jwtUtil).should(times(1)).validateToken(invalidToken);
-            then(jwtUtil).should(never()).isTokenExpired(anyString());
             then(jwtUtil).should(never()).getTokenType(anyString());
         }
 
@@ -179,16 +179,14 @@ class AuthServiceImplTest {
             // Given
             String expiredToken = "expired-jwt-token";
             
-            given(jwtUtil.validateToken(expiredToken)).willReturn(true);
-            given(jwtUtil.isTokenExpired(expiredToken)).willReturn(true);
+            doThrow(new JwtExceptionHandler("Token expired")).when(jwtUtil).validateToken(expiredToken);
 
             // When & Then
             assertThatThrownBy(() -> authService.logout(expiredToken))
                 .isInstanceOf(AuthHandler.class)
-                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.TOKEN_EXPIRED);
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.INVALID_TOKEN);
                 
             then(jwtUtil).should(times(1)).validateToken(expiredToken);
-            then(jwtUtil).should(times(1)).isTokenExpired(expiredToken);
             then(jwtUtil).should(never()).getTokenType(anyString());
         }
     }

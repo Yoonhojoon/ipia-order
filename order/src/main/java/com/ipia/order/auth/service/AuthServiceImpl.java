@@ -47,17 +47,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout(String token) {
-        // 1. 토큰 유효성 검증
-        if (!jwtUtil.validateToken(token)) {
+        // 1. 토큰 유효성 검증 (만료 여부 포함)
+        try {
+            jwtUtil.validateToken(token);
+        } catch (Exception e) {
             throw new AuthHandler(AuthErrorStatus.INVALID_TOKEN);
         }
 
-        // 2. 토큰 만료 여부 확인
-        if (jwtUtil.isTokenExpired(token)) {
-            throw new AuthHandler(AuthErrorStatus.TOKEN_EXPIRED);
-        }
-
-        // 3. 토큰 타입 확인 (ACCESS 토큰인지 확인)
+        // 2. 토큰 타입 확인 (ACCESS 토큰인지 확인)
         String tokenType = jwtUtil.getTokenType(token);
         if (!"ACCESS".equals(tokenType)) {
             throw new AuthHandler(AuthErrorStatus.INVALID_TOKEN);

@@ -14,11 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
 
 /**
  * Spring Security 설정
@@ -38,8 +33,8 @@ public class SecurityConfig {
             // CSRF 비활성화 (JWT 사용 시 필요 없음)
             .csrf(AbstractHttpConfigurer::disable)
             
-            // CORS 설정
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // CORS 설정 (WebConfig에서 처리)
+            .cors(cors -> {})
             
             // 세션 관리 정책 설정 (STATELESS로 JWT 사용)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -68,7 +63,7 @@ public class SecurityConfig {
             )
             
             // H2 콘솔을 위한 프레임 옵션 설정
-            .headers(headers -> headers.frameOptions().sameOrigin())
+            .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
             
             // 예외 처리 핸들러 설정
             .exceptionHandling(exceptions -> exceptions
@@ -88,16 +83,4 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
 }
