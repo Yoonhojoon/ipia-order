@@ -34,6 +34,7 @@ class MemberServiceImplTest {
         validMember = Member.builder()
                 .name("홍길동")
                 .email("hong@example.com")
+                .password("encodedPassword123!")
                 .build();
     }
 
@@ -151,10 +152,12 @@ class MemberServiceImplTest {
             Member member1 = Member.builder()
                     .name("홍길동")
                     .email("hong@example.com")
+                    .password("encodedPassword123!")
                     .build();
             Member member2 = Member.builder()
                     .name("김철수")
                     .email("kim@example.com")
+                    .password("encodedPassword123!")
                     .build();
             
             java.util.List<Member> members = java.util.List.of(member1, member2);
@@ -196,10 +199,12 @@ class MemberServiceImplTest {
             Member member1 = Member.builder()
                     .name("홍길동")
                     .email("hong1@example.com")
+                    .password("encodedPassword123!")
                     .build();
             Member member2 = Member.builder()
                     .name("홍길동")
                     .email("hong2@example.com")
+                    .password("encodedPassword123!")
                     .build();
             
             java.util.List<Member> members = java.util.List.of(member1, member2);
@@ -341,6 +346,7 @@ class MemberServiceImplTest {
             Member existingMember = Member.builder()
                     .name("기존닉네임")
                     .email("test@example.com")
+                    .password("encodedPassword123!")
                     .build();
             
             given(memberRepository.findById(memberId))
@@ -411,6 +417,7 @@ class MemberServiceImplTest {
             Member existingMember = Member.builder()
                     .name("홍길동")
                     .email("test@example.com")
+                    .password("encodedPassword123!")
                     .build();
             
             given(memberRepository.findById(memberId))
@@ -491,6 +498,7 @@ class MemberServiceImplTest {
             Member activeMember = Member.builder()
                     .name("홍길동")
                     .email("hong@example.com")
+                    .password("encodedPassword123!")
                     .build();
             
             given(memberRepository.findById(memberId))
@@ -541,6 +549,7 @@ class MemberServiceImplTest {
             Member inactiveMember = Member.builder()
                     .name("홍길동")
                     .email("hong@example.com")
+                    .password("encodedPassword123!")
                     .build();
             // 이미 탈퇴한 상태로 설정
             inactiveMember.deactivate();
@@ -564,6 +573,7 @@ class MemberServiceImplTest {
             Member activeMember = Member.builder()
                     .name("홍길동")
                     .email("hong@example.com")
+                    .password("encodedPassword123!")
                     .build();
             
             given(memberRepository.findById(memberId))
