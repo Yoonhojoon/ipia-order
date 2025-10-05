@@ -5,9 +5,12 @@ import java.time.LocalDateTime;
 import org.springframework.util.StringUtils;
 
 import com.ipia.order.common.entity.BaseEntity;
+import com.ipia.order.common.enums.MemberRole;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,17 +45,22 @@ public class Member extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private MemberRole role = MemberRole.USER;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
     @Builder
-    private Member(String name, String email, String password) {
+    private Member(String name, String email, String password, MemberRole role) {
         validateName(name);
         validateEmail(email);
         validatePassword(password);
         this.name = name;
         this.email = email;
         this.password = password; // 이미 암호화된 비밀번호를 받음
+        this.role = role != null ? role : MemberRole.USER;
     }
 
     private void validateName(String name) {
@@ -136,13 +144,15 @@ public class Member extends BaseEntity {
      * @param name 회원 이름
      * @param email 이메일
      * @param password 비밀번호 (암호화된 상태)
+     * @param role 권한
      * @return 테스트용 Member 객체
      */
-    public static Member createTestMember(Long id, String name, String email, String password) {
+    public static Member createTestMember(Long id, String name, String email, String password, MemberRole role) {
         Member member = Member.builder()
                 .name(name)
                 .email(email)
                 .password(password)
+                .role(role)
                 .build();
         
         // Reflection을 사용하여 필드 설정
