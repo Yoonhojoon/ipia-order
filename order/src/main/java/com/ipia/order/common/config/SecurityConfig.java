@@ -72,7 +72,7 @@ public class SecurityConfig {
             )
             
             // JWT 필터 추가 (순서 중요: ExceptionHandler -> Authentication)
-            .addFilterBefore(jwtExceptionHandlerFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(jwtExceptionHandlerFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

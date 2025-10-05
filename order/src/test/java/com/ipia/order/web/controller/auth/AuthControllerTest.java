@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @WebMvcTest(value = AuthController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 @Import(TestConfig.class)
@@ -164,6 +165,62 @@ class AuthControllerTest {
         }
     }
 
+    @Nested
+    @DisplayName("/api/auth/register")
+    class RegisterApi {
+        @Test
+        @DisplayName("정상 회원가입 시 200을 기대한다")
+        void register_shouldReturn200_whenValid() throws Exception {
+            // Given
+            when(authService.register(eq("홍길동"), eq("test@example.com"), eq("pass1234")))
+                .thenReturn(
+                    com.ipia.order.member.domain.Member.createTestMember(
+                        1L, "홍길동", "test@example.com", "encoded", 
+                        com.ipia.order.member.enums.MemberRole.USER
+                    )
+                );
+
+            String body = "{\"name\":\"홍길동\",\"email\":\"test@example.com\",\"password\":\"pass1234\"}";
+
+            // When & Then
+            mockMvc.perform(post("/api/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.isSuccess").value(true))
+                    .andExpect(jsonPath("$.code").value("AUTH2004"))
+                    .andExpect(jsonPath("$.data.email").value("test@example.com"));
+        }
+
+        @Test
+        @DisplayName("중복 이메일 시 409를 기대한다")
+        void register_shouldReturn409_whenDuplicateEmail() throws Exception {
+            // Given
+            doThrow(new RuntimeException("duplicate")).when(authService)
+                .register(eq("홍길동"), eq("dupe@example.com"), eq("pass1234"));
+
+            String body = "{\"name\":\"홍길동\",\"email\":\"dupe@example.com\",\"password\":\"pass1234\"}";
+
+            // When & Then
+            mockMvc.perform(post("/api/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.isSuccess").value(false))
+                    .andExpect(jsonPath("$.code").value("AUTH4007"));
+        }
+
+        @Test
+        @DisplayName("검증 실패 시 400을 기대한다")
+        void register_shouldReturn400_whenValidationFails() throws Exception {
+            String body = "{\"name\":\"\",\"email\":\"not-email\",\"password\":\"123\"}";
+            mockMvc.perform(post("/api/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.isSuccess").value(false));
+        }
+    }
     @Nested
     @DisplayName("에러 응답 포맷")
     class ErrorFormat {
