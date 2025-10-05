@@ -5,6 +5,8 @@ import com.ipia.order.common.exception.member.MemberHandler;
 import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
+import com.ipia.order.auth.service.AuthService;
+import com.ipia.order.common.util.JwtUtil;
 import com.ipia.order.web.dto.request.MemberPasswordRequest;
 import com.ipia.order.web.dto.request.MemberSignupRequest;
 import com.ipia.order.web.dto.request.MemberUpdateRequest;
@@ -40,6 +42,12 @@ class MemberControllerTest {
 
     @MockitoBean
     private MemberService memberService;
+    
+    @MockitoBean
+    private AuthService authService;
+    
+    @MockitoBean
+    private JwtUtil jwtUtil;
 
     @BeforeEach
     void setUp() {
@@ -288,20 +296,6 @@ class MemberControllerTest {
      * Mock Member 엔티티 생성
      */
     private Member createMockMember(Long id, String name, String email) {
-        Member member = Member.builder()
-                .name(name)
-                .email(email)
-                .build();
-        
-        // Reflection을 사용하여 ID 설정 (테스트용)
-        try {
-            java.lang.reflect.Field idField = Member.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(member, id);
-        } catch (Exception e) {
-            // 테스트용이므로 예외 무시
-        }
-        
-        return member;
+        return Member.createTestMember(id, name, email, "encoded-password", com.ipia.order.member.enums.MemberRole.USER);
     }
 }
