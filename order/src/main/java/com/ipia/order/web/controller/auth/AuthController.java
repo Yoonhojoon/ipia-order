@@ -4,6 +4,7 @@ import com.ipia.order.auth.service.AuthService;
 import com.ipia.order.common.exception.ApiErrorCodeExample;
 import com.ipia.order.common.exception.ApiErrorCodeExamples;
 import com.ipia.order.common.exception.ApiResponse;
+import com.ipia.order.common.exception.auth.AuthHandler;
 import com.ipia.order.common.exception.auth.status.AuthErrorStatus;
 import com.ipia.order.common.exception.auth.status.AuthSuccessStatus;
 import com.ipia.order.common.util.JwtUtil;
