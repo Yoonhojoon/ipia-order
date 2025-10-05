@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import org.springframework.util.StringUtils;
 
 import com.ipia.order.common.entity.BaseEntity;
+import com.ipia.order.common.exception.member.MemberHandler;
+import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import com.ipia.order.member.enums.MemberRole;
 
 import jakarta.persistence.Column;
@@ -65,33 +67,33 @@ public class Member extends BaseEntity {
 
     private void validateName(String name) {
         if (!StringUtils.hasText(name)) {
-            throw new IllegalArgumentException("회원 이름은 필수입니다");
+            throw new MemberHandler(MemberErrorStatus.NAME_REQUIRED);
         }
         if (name.length() > 100) {
-            throw new IllegalArgumentException("회원 이름은 100자를 초과할 수 없습니다");
+            throw new MemberHandler(MemberErrorStatus.NAME_TOO_LONG);
         }
     }
 
     private void validateEmail(String email) {
         if (!StringUtils.hasText(email)) {
-            throw new IllegalArgumentException("이메일은 필수입니다");
+            throw new MemberHandler(MemberErrorStatus.EMAIL_REQUIRED);
         }
         if (email.length() > 200) {
-            throw new IllegalArgumentException("이메일은 200자를 초과할 수 없습니다");
+            throw new MemberHandler(MemberErrorStatus.EMAIL_TOO_LONG);
         }
         // 간단한 이메일 형식 검증
         if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다");
+            throw new MemberHandler(MemberErrorStatus.EMAIL_FORMAT_INVALID);
         }
     }
 
     private void validatePassword(String password) {
         if (!StringUtils.hasText(password)) {
-            throw new IllegalArgumentException("비밀번호는 필수입니다");
+            throw new MemberHandler(MemberErrorStatus.PASSWORD_REQUIRED);
         }
         // 암호화된 비밀번호는 BCrypt 해시 형태이므로 길이 제한을 늘림
         if (password.length() > 255) {
-            throw new IllegalArgumentException("비밀번호는 255자를 초과할 수 없습니다");
+            throw new MemberHandler(MemberErrorStatus.PASSWORD_TOO_LONG);
         }
     }
 
@@ -115,7 +117,7 @@ public class Member extends BaseEntity {
      */
     public void deactivate() {
         if (!this.isActive) {
-            throw new IllegalStateException("이미 탈퇴한 회원입니다");
+            throw new MemberHandler(MemberErrorStatus.ALREADY_INACTIVE);
         }
         this.isActive = false;
         this.deletedAt = LocalDateTime.now();

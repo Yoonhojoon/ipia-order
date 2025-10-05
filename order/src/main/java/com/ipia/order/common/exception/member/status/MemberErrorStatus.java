@@ -28,7 +28,23 @@ public enum MemberErrorStatus implements ErrorResponse {
     @ExplainError("새 비밀번호 정책 위반")
     PASSWORD_POLICY_VIOLATION(HttpStatus.BAD_REQUEST, "MEMBER4008", "새 비밀번호가 정책을 위반했습니다."),
     @ExplainError("권한이 올바르지 않은 회원")
-    INVALID_ROLE(HttpStatus.BAD_REQUEST, "MEMBER4009", "유효하지 않은 권한 코드입니다.");
+    INVALID_ROLE(HttpStatus.BAD_REQUEST, "MEMBER4009", "유효하지 않은 권한 코드입니다."),
+    
+    // 입력값 검증 관련
+    @ExplainError("회원 이름이 필수 아님")
+    NAME_REQUIRED(HttpStatus.BAD_REQUEST, "MEMBER4010", "회원 이름은 필수입니다."),
+    @ExplainError("회원 이름 길이 초과")
+    NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "MEMBER4011", "회원 이름은 100자를 초과할 수 없습니다."),
+    @ExplainError("이메일이 필수 아님")
+    EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "MEMBER4012", "이메일은 필수입니다."),
+    @ExplainError("이메일 길이 초과")
+    EMAIL_TOO_LONG(HttpStatus.BAD_REQUEST, "MEMBER4013", "이메일은 200자를 초과할 수 없습니다."),
+    @ExplainError("이메일 형식 오류")
+    EMAIL_FORMAT_INVALID(HttpStatus.BAD_REQUEST, "MEMBER4014", "올바른 이메일 형식이 아닙니다."),
+    @ExplainError("비밀번호가 필수 아님")
+    PASSWORD_REQUIRED(HttpStatus.BAD_REQUEST, "MEMBER4015", "비밀번호는 필수입니다."),
+    @ExplainError("비밀번호 길이 초과")
+    PASSWORD_TOO_LONG(HttpStatus.BAD_REQUEST, "MEMBER4016", "비밀번호는 255자를 초과할 수 없습니다.");
 
 
 
