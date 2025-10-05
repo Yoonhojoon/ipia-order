@@ -33,7 +33,13 @@ public class JwtUtil {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token-expiration}") long accessTokenExpiration,
             @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < 32) {
+            throw new IllegalArgumentException(
+                "JWT 시크릿 키는 최소 32바이트(256비트) 이상이어야 합니다. 현재: " + secretBytes.length + "바이트"
+            );
+        }
+        this.secretKey = Keys.hmacShaKeyFor(secretBytes);
         this.accessTokenExpiration = accessTokenExpiration;
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
