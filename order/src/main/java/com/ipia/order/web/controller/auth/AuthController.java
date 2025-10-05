@@ -124,8 +124,10 @@ public class AuthController {
         try {
             LoginResponse response = authService.refresh(request.getToken());
             return ApiResponse.onSuccess(AuthSuccessStatus.TOKEN_REFRESH_SUCCESS, response);
+        } catch (AuthHandler e) {
+        return ApiResponse.onFailure(e.getStatus(), null);
         } catch (Exception e) {
-            return ApiResponse.onFailure(AuthErrorStatus.INVALID_TOKEN, (LoginResponse) null);
+            return ApiResponse.onFailure(AuthErrorStatus.INVALID_TOKEN, null);
         }
     }
 }
