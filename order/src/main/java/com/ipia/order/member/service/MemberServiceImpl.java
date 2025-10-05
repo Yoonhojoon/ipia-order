@@ -19,21 +19,7 @@ public class MemberServiceImpl implements MemberService {
         this.memberRepository = memberRepository;
     }
 
-    @Override
-    public Member signup(String name, String email) {
-        // 이메일 중복 체크
-        if (memberRepository.existsByEmail(email)) {
-            throw new MemberHandler(MemberErrorStatus.MEMBER_ALREADY_EXISTS);
-        }
-        
-        // 회원 생성 및 저장
-        Member member = Member.builder()
-                .name(name)
-                .email(email)
-                .build();
-                
-        return memberRepository.save(member);
-    }
+    // 회원가입은 AuthService로 이전되었습니다.
 
     @Override
     public Optional<Member> findById(Long id) {

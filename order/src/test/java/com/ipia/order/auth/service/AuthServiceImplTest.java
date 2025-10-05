@@ -27,6 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthServceImpl 테스트")
@@ -188,6 +189,59 @@ class AuthServiceImplTest {
                 
             then(jwtUtil).should(times(1)).validateToken(expiredToken);
             then(jwtUtil).should(never()).getTokenType(anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("회원가입 테스트")
+    class RegisterTest {
+
+        @Test
+        @DisplayName("정상적인 입력으로 회원가입 성공 (비밀번호 암호화 저장)")
+        void 회원가입_성공_암호화저장() {
+            // Given
+            String name = "홍길동";
+            String email = "test@example.com";
+            String rawPassword = "Password123!";
+            String encoded = "$2a$10$encodedPassword";
+
+            given(memberRepository.existsByEmail(email)).willReturn(false);
+            given(passwordEncoder.encode(rawPassword)).willReturn(encoded);
+            given(memberRepository.save(any(Member.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            Member result = authService.register(name, email, rawPassword);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getName()).isEqualTo(name);
+            assertThat(result.getEmail()).isEqualTo(email);
+            assertThat(result.getPassword()).isEqualTo(encoded);
+            assertThat(result.getPassword()).isNotEqualTo(rawPassword);
+            then(memberRepository).should(times(1)).existsByEmail(email);
+            then(passwordEncoder).should(times(1)).encode(rawPassword);
+            then(memberRepository).should(times(1)).save(any(Member.class));
+        }
+
+        @Test
+        @DisplayName("중복 이메일로 회원가입 실패")
+        void 회원가입_실패_중복이메일() {
+            // Given
+            String name = "홍길동";
+            String email = "dup@example.com";
+            String rawPassword = "Password123!";
+
+            given(memberRepository.existsByEmail(email)).willReturn(true);
+
+            // When & Then
+            assertThatThrownBy(() -> authService.register(name, email, rawPassword))
+                .isInstanceOf(AuthHandler.class)
+                .hasFieldOrPropertyWithValue("status", AuthErrorStatus.MEMBER_ALREADY_EXISTS);
+
+            then(memberRepository).should(times(1)).existsByEmail(email);
+            then(passwordEncoder).should(never()).encode(anyString());
+            then(memberRepository).should(never()).save(any(Member.class));
         }
     }
 }

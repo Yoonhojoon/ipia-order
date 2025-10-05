@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -63,5 +62,26 @@ public class AuthServiceImpl implements AuthService {
         // 4. 로그아웃 처리 (현재는 토큰 검증만 수행, 향후 Redis 블랙리스트 추가 예정)
         // TODO: Redis 블랙리스트에 토큰 추가
         // redisTemplate.opsForValue().set("blacklist:" + token, "true", jwtUtil.getExpirationFromToken(token));
+    }
+
+    @Override
+    @Transactional
+    public Member register(String name, String email, String password) {
+        // 이메일 중복 체크
+        if (memberRepository.existsByEmail(email)) {
+            throw new AuthHandler(AuthErrorStatus.MEMBER_ALREADY_EXISTS);
+        }
+
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(password);
+
+        // 회원 생성 및 저장
+        Member member = Member.builder()
+                .name(name)
+                .email(email)
+                .password(encodedPassword)
+                .build();
+
+        return memberRepository.save(member);
     }
 }

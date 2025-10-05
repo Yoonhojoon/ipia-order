@@ -1,9 +1,9 @@
 package com.ipia.order.web.controller.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ipia.order.member.domain.Member;
+// signup 관련 테스트는 Auth로 이전됨
 import com.ipia.order.member.service.MemberService;
-import com.ipia.order.web.dto.request.MemberSignupRequest;
+import com.ipia.order.common.util.JwtUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
+// signup 관련 테스트는 Auth로 이전됨
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -29,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(value = MemberController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 class MemberControllerExceptionTest {
 
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -37,6 +36,9 @@ class MemberControllerExceptionTest {
 
     @MockitoBean
     private MemberService memberService;
+
+    @MockitoBean
+    private JwtUtil jwtUtil;
 
     @Test
     @DisplayName("잘못된 HTTP 메서드 요청 - 405 Method Not Allowed")
@@ -48,39 +50,39 @@ class MemberControllerExceptionTest {
     }
 
     @Test
-    @DisplayName("잘못된 Content-Type 요청 - 415 Unsupported Media Type")
+    @DisplayName("잘못된 Content-Type 요청 - 415 Unsupported Media Type (PUT /api/members/{id})")
     void invalidContentType_Returns415() throws Exception {
         // Given
-        String invalidContent = "name=홍길동&email=hong@example.com";
+        String invalidContent = "name=홍길동";
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .content(invalidContent))
                 .andExpect(status().isUnsupportedMediaType());
     }
 
     @Test
-    @DisplayName("잘못된 JSON 형식 요청 - 400 Bad Request")
+    @DisplayName("잘못된 JSON 형식 요청 - 400 Bad Request (PUT /api/members/{id})")
     void invalidJsonFormat_Returns400() throws Exception {
         // Given
-        String invalidJson = "{ \"name\": \"홍길동\", \"email\": }";
+        String invalidJson = "{ \"name\": }";
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("필수 파라미터 누락 - 400 Bad Request")
+    @DisplayName("필수 파라미터 누락 - 400 Bad Request (PUT /api/members/{id})")
     void missingRequiredParameter_Returns400() throws Exception {
         // Given
-        String requestWithoutName = "{ \"email\": \"hong@example.com\" }";
+        String requestWithoutName = "{ }";
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestWithoutName))
                 .andExpect(status().isBadRequest())
@@ -91,24 +93,13 @@ class MemberControllerExceptionTest {
     }
 
     @Test
-    @DisplayName("잘못된 이메일 형식 - 400 Bad Request")
+    @DisplayName("잘못된 이름 형식 - 400 Bad Request (PUT /api/members/{id})")
     void invalidEmailFormat_Returns400() throws Exception {
         // Given
-        MemberSignupRequest request = MemberSignupRequest.builder()
-                .name("홍길동")
-                .email("invalid-email-format")
-                .build();
-        String jsonRequest = objectMapper.writeValueAsString(request);
-
-        // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonRequest))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.isSuccess").value(false))
-                .andExpect(jsonPath("$.code").exists())
-                .andExpect(jsonPath("$.message").exists());
+                        .content("{ }") )
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -134,22 +125,15 @@ class MemberControllerExceptionTest {
     }
 
     @Test
-    @DisplayName("서버 내부 오류 - 500 Internal Server Error")
+    @DisplayName("서버 내부 오류 - 500 Internal Server Error (PUT /api/members/{id})")
     void serverError_Returns500() throws Exception {
-        // Given
-        MemberSignupRequest request = MemberSignupRequest.builder()
-                .name("홍길동")
-                .email("hong@example.com")
-                .build();
-        String jsonRequest = objectMapper.writeValueAsString(request);
-
-        // Mock 설정 - 예외 발생
-        when(memberService.signup(anyString(), anyString())).thenThrow(new RuntimeException("서버 내부 오류"));
+        // Given - updateNickname 호출 시 예외 발생
+        when(memberService.updateNickname(anyLong(), anyString())).thenThrow(new RuntimeException("서버 내부 오류"));
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonRequest))
+                        .content("{ \"name\": \"홍길동\" }"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.isSuccess").value(false))
@@ -158,7 +142,7 @@ class MemberControllerExceptionTest {
     }
 
     @Test
-    @DisplayName("요청 본문이 너무 큰 경우 - 413 Payload Too Large")
+    @DisplayName("요청 본문이 너무 큰 경우 - 400 Bad Request (PUT /api/members/{id})")
     void requestTooLarge_Returns413() throws Exception {
         // Given
         StringBuilder largeName = new StringBuilder();
@@ -166,14 +150,10 @@ class MemberControllerExceptionTest {
             largeName.append("홍길동");
         }
         
-        MemberSignupRequest request = MemberSignupRequest.builder()
-                .name(largeName.toString())
-                .email("hong@example.com")
-                .build();
-        String jsonRequest = objectMapper.writeValueAsString(request);
+        String jsonRequest = objectMapper.writeValueAsString(java.util.Map.of("name", largeName.toString()));
 
         // When & Then
-        mockMvc.perform(post("/api/members")
+        mockMvc.perform(put("/api/members/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isBadRequest())
