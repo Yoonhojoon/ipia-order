@@ -36,6 +36,9 @@ public class Member extends BaseEntity {
     @Column(name = "email", nullable = false, length = 200)
     private String email;
 
+    @Column(name = "password", nullable = false, length = 255)
+    private String password;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -43,11 +46,13 @@ public class Member extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    private Member(String name, String email) {
+    private Member(String name, String email, String password) {
         validateName(name);
         validateEmail(email);
+        validatePassword(password);
         this.name = name;
         this.email = email;
+        this.password = password; // 이미 암호화된 비밀번호를 받음
     }
 
     private void validateName(String name) {
@@ -69,6 +74,16 @@ public class Member extends BaseEntity {
         // 간단한 이메일 형식 검증
         if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
             throw new IllegalArgumentException("올바른 이메일 형식이 아닙니다");
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (!StringUtils.hasText(password)) {
+            throw new IllegalArgumentException("비밀번호는 필수입니다");
+        }
+        // 암호화된 비밀번호는 BCrypt 해시 형태이므로 길이 제한을 늘림
+        if (password.length() > 255) {
+            throw new IllegalArgumentException("비밀번호는 255자를 초과할 수 없습니다");
         }
     }
 
@@ -106,16 +121,28 @@ public class Member extends BaseEntity {
     }
 
     /**
+     * 비밀번호 검증
+     * @param rawPassword 평문 비밀번호
+     * @param passwordEncoder 비밀번호 인코더
+     * @return 비밀번호 일치 여부
+     */
+    public boolean checkPassword(String rawPassword, com.ipia.order.common.util.PasswordEncoderUtil passwordEncoder) {
+        return passwordEncoder.matches(rawPassword, this.password);
+    }
+
+    /**
      * 테스트용 Member 생성 (Reflection 사용)
      * @param id 회원 ID
      * @param name 회원 이름
      * @param email 이메일
+     * @param password 비밀번호 (암호화된 상태)
      * @return 테스트용 Member 객체
      */
-    public static Member createTestMember(Long id, String name, String email) {
+    public static Member createTestMember(Long id, String name, String email, String password) {
         Member member = Member.builder()
                 .name(name)
                 .email(email)
+                .password(password)
                 .build();
         
         // Reflection을 사용하여 필드 설정
