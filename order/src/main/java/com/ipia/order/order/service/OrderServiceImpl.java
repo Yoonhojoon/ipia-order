@@ -3,6 +3,8 @@ package com.ipia.order.order.service;
 import java.util.List;
 import java.util.Optional;
 
+import com.ipia.order.member.domain.Member;
+import com.ipia.order.order.event.OrderPaidEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -43,7 +45,7 @@ public class OrderServiceImpl implements OrderService {
         if (optionalMember.isEmpty()) {
             throw new OrderHandler(OrderErrorStatus.MEMBER_NOT_FOUND);
         }
-        com.ipia.order.member.domain.Member member = optionalMember.get();
+        Member member = optionalMember.get();
         if (!member.isActive()) {
             throw new OrderHandler(OrderErrorStatus.INACTIVE_MEMBER);
         }
@@ -82,7 +84,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 필터 검증: memberId가 주어졌는데 존재하지 않으면 INVALID_FILTER
         if (memberId != null) {
-            Optional<com.ipia.order.member.domain.Member> memberOpt = memberService.findById(memberId);
+            Optional<Member> memberOpt = memberService.findById(memberId);
             if (memberOpt.isEmpty()) {
                 throw new OrderHandler(OrderErrorStatus.INVALID_FILTER);
             }
@@ -139,8 +141,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.transitionToPaid();
-        Order saved = orderRepository.save(order);
-        eventPublisher.publishEvent(com.ipia.order.order.event.OrderPaidEvent.of(saved.getId(), saved.getTotalAmount()));
+        orderRepository.save(order);
+        eventPublisher.publishEvent(OrderPaidEvent.of(order.getId(), order.getTotalAmount()));
     }
 
     @Override

@@ -61,9 +61,10 @@ class OrderServiceImplTest {
     }
 
     @Nested
-    @DisplayName("createOrder 실패 케이스")
-    class CreateOrderFailureTest {
+    @DisplayName("createOrder")
+    class CreateOrderTest {
 
+        // 실패 케이스
         @Test
         @DisplayName("존재하지 않는 회원으로 주문 생성 시 MemberNotFoundException 발생")
         void createOrder_WithNonExistentMember_ThrowsMemberNotFoundException() {
@@ -165,8 +166,8 @@ class OrderServiceImplTest {
     }
 
     @Nested
-    @DisplayName("getOrder 실패 케이스")
-    class GetOrderFailureTest {
+    @DisplayName("getOrder")
+    class GetOrderTest {
 
         @Test
         @DisplayName("존재하지 않는 주문 조회 시 OrderNotFoundException 발생")
@@ -204,9 +205,10 @@ class OrderServiceImplTest {
     }
 
     @Nested
-    @DisplayName("listOrders 실패 케이스")
-    class ListOrdersFailureTest {
+    @DisplayName("listOrders")
+    class ListOrdersTest {
 
+        // 실패 케이스
         @Test
         @DisplayName("잘못된 페이지 번호로 주문 목록 조회 시 InvalidPaginationException 발생")
         void listOrders_WithInvalidPageNumber_ThrowsInvalidPaginationException() {
@@ -254,11 +256,83 @@ class OrderServiceImplTest {
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.INVALID_FILTER.getCode());
         }
+
+        // 성공 케이스
+        @Test
+        @DisplayName("유효한 페이지/회원으로 조회 시 빈 목록이라도 정상 반환")
+        void listOrders_ReturnsEmptyListWhenNoData() {
+            // given
+            Long memberId = 1L;
+            OrderStatus status = OrderStatus.CREATED;
+            int page = 0;
+            int size = 10;
+
+            given(memberService.findById(memberId))
+                    .willReturn(Optional.of(validMember));
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("회원/상태 미지정 시 기본 페이지 조회도 정상 반환")
+        void listOrders_NoFilters_ReturnsEmptyList() {
+            // given
+            int page = 0;
+            int size = 20;
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(null, null, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("상태만 지정해도 정상 반환")
+        void listOrders_StatusOnly_ReturnsEmptyList() {
+            // given
+            OrderStatus status = OrderStatus.CREATED;
+            int page = 1;
+            int size = 5;
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(null, status, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("memberId와 status 모두 지정해도 정상 반환")
+        void listOrders_MemberAndStatus_ReturnsEmptyList() {
+            // given
+            Long memberId = 1L;
+            OrderStatus status = OrderStatus.PAID;
+            int page = 0;
+            int size = 10;
+
+            given(memberService.findById(memberId))
+                    .willReturn(Optional.of(validMember));
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).isEmpty();
+        }
     }
 
     @Nested
-    @DisplayName("cancelOrder 실패 케이스")
-    class CancelOrderFailureTest {
+    @DisplayName("cancelOrder")
+    class CancelOrderTest {
 
         @Test
         @DisplayName("존재하지 않는 주문 취소 시 OrderNotFoundException 발생")
@@ -332,11 +406,47 @@ class OrderServiceImplTest {
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.IDEMPOTENCY_CONFLICT.getCode());
         }
+        // 성공 케이스
+        @Test
+        @DisplayName("정상 입력 시 주문 생성되고 OrderCreatedEvent 발행")
+        void createOrder_PublishesOrderCreatedEvent() {
+            // given
+            long memberId = 1L;
+            long totalAmount = 10000L;
+            String idempotencyKey = "ok-key";
+
+            given(memberService.findById(memberId))
+                    .willReturn(Optional.of(validMember));
+
+            // save 시 ID가 설정된 엔티티를 반환하도록 스텁
+            Order savedOrder = Order.createTestOrder(10L, memberId, totalAmount, OrderStatus.CREATED);
+            given(orderRepository.save(any(Order.class)))
+                    .willReturn(savedOrder);
+
+            // when
+            Order result = orderService.createOrder(memberId, totalAmount, idempotencyKey);
+
+            // then: 저장 결과 확인
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(10L);
+            assertThat(result.getStatus()).isEqualTo(OrderStatus.CREATED);
+            assertThat(result.getTotalAmount()).isEqualTo(totalAmount);
+
+            // 이벤트 발행 확인
+            ArgumentCaptor<OrderCreatedEvent> eventCaptor = ArgumentCaptor.forClass(OrderCreatedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+            OrderCreatedEvent captured = eventCaptor.getValue();
+            assertThat(captured.getOrderId()).isEqualTo(10L);
+            assertThat(captured.getMemberId()).isEqualTo(memberId);
+            assertThat(captured.getTotalAmount()).isEqualTo(totalAmount);
+        }
     }
 
+    
+
     @Nested
-    @DisplayName("handlePaymentApproved 실패 케이스")
-    class HandlePaymentApprovedFailureTest {
+    @DisplayName("handlePaymentApproved")
+    class HandlePaymentApprovedTest {
 
         @Test
         @DisplayName("존재하지 않는 주문에 대한 결제 승인 시 OrderNotFoundException 발생")
@@ -389,8 +499,8 @@ class OrderServiceImplTest {
     }
 
     @Nested
-    @DisplayName("handlePaymentCanceled 실패 케이스")
-    class HandlePaymentCanceledFailureTest {
+    @DisplayName("handlePaymentCanceled")
+    class HandlePaymentCanceledTest {
 
         @Test
         @DisplayName("존재하지 않는 주문에 대한 결제 취소 시 OrderNotFoundException 발생")
