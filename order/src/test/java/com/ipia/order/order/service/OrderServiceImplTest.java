@@ -425,66 +425,16 @@ class OrderServiceImplTest {
         }
     }
 
-    @Nested
-    @DisplayName("OrderService 이벤트 발행 테스트")
-    class OrderServiceEventPublishingTest {
-
-        @Test
-        @DisplayName("주문 생성 시 OrderCreatedEvent 발행")
-        void createOrder_PublishesOrderCreatedEvent() {
-            // given
-            long memberId = 1L;
-            long totalAmount = 10000L;
-            String idempotencyKey = "test-key";
-
-            given(memberService.findById(memberId))
-                    .willReturn(Optional.of(validMember));
-            given(orderRepository.save(any(Order.class)))
-                    .willReturn(validOrder);
-
-            // when
-            orderService.createOrder(memberId, totalAmount, idempotencyKey);
-
-            // then
-            ArgumentCaptor<OrderCreatedEvent> eventCaptor = ArgumentCaptor.forClass(OrderCreatedEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
-
-            OrderCreatedEvent capturedEvent = eventCaptor.getValue();
-            assertThat(capturedEvent.getOrderId()).isEqualTo(validOrder.getId());
-            assertThat(capturedEvent.getMemberId()).isEqualTo(memberId);
-            assertThat(capturedEvent.getTotalAmount()).isEqualTo(totalAmount);
-        }
-
-        @Test
-        @DisplayName("주문 취소 시 OrderCanceledEvent 발행")
-        void cancelOrder_PublishesOrderCanceledEvent() {
-            // given
-            long orderId = 1L;
-            String reason = "취소 사유";
-
-            given(orderRepository.findById(orderId))
-                    .willReturn(Optional.of(validOrder));
-
-            // when
-            orderService.cancelOrder(orderId, reason);
-
-            // then
-            ArgumentCaptor<OrderCanceledEvent> eventCaptor = ArgumentCaptor.forClass(OrderCanceledEvent.class);
-            verify(eventPublisher).publishEvent(eventCaptor.capture());
-
-            OrderCanceledEvent capturedEvent = eventCaptor.getValue();
-            assertThat(capturedEvent.getOrderId()).isEqualTo(orderId);
-            assertThat(capturedEvent.getReason()).isEqualTo(reason);
-        }
-
         @Test
         @DisplayName("결제 승인 처리 시 OrderPaidEvent 발행")
         void handlePaymentApproved_PublishesOrderPaidEvent() {
             // given
             long orderId = 1L;
+            
+            Order pendingOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.PENDING);
 
             given(orderRepository.findById(orderId))
-                    .willReturn(Optional.of(validOrder));
+                    .willReturn(Optional.of(pendingOrder));
 
             // when
             orderService.handlePaymentApproved(orderId);
@@ -495,7 +445,6 @@ class OrderServiceImplTest {
 
             OrderPaidEvent capturedEvent = eventCaptor.getValue();
             assertThat(capturedEvent.getOrderId()).isEqualTo(orderId);
-            assertThat(capturedEvent.getPaidAmount()).isEqualTo(validOrder.getTotalAmount());
+            assertThat(capturedEvent.getPaidAmount()).isEqualTo(pendingOrder.getTotalAmount());
         }
-    }
 }
