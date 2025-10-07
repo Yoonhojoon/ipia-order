@@ -41,7 +41,29 @@ public enum OrderErrorStatus implements ErrorResponse {
     @ExplainError("주문 상태가 필수 아님")
     ORDER_STATUS_REQUIRED(HttpStatus.BAD_REQUEST, "ORDER4012", "주문 상태는 필수입니다."),
     @ExplainError("유효하지 않은 주문 상태")
-    INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "ORDER4013", "유효하지 않은 주문 상태입니다.");
+    INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "ORDER4013", "유효하지 않은 주문 상태입니다."),
+
+    // OrderService 관련 추가 예외들
+    @ExplainError("존재하지 않는 회원")
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER4014", "존재하지 않는 회원입니다."),
+    @ExplainError("비활성 회원")
+    INACTIVE_MEMBER(HttpStatus.BAD_REQUEST, "ORDER4015", "비활성 회원입니다."),
+    @ExplainError("유효하지 않은 주문 금액")
+    INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "ORDER4016", "주문 금액은 0보다 커야 합니다."),
+    @ExplainError("멱등 키 충돌")
+    IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "ORDER4017", "동일한 멱등 키로 이미 처리된 요청입니다."),
+    @ExplainError("권한 없는 주문 조회")
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER4018", "해당 주문에 대한 접근 권한이 없습니다."),
+    @ExplainError("잘못된 필터 조건")
+    INVALID_FILTER(HttpStatus.BAD_REQUEST, "ORDER4019", "잘못된 필터 조건입니다."),
+    @ExplainError("잘못된 페이지네이션 파라미터")
+    INVALID_PAGINATION(HttpStatus.BAD_REQUEST, "ORDER4020", "잘못된 페이지네이션 파라미터입니다."),
+    @ExplainError("잘못된 주문 상태")
+    INVALID_ORDER_STATE(HttpStatus.BAD_REQUEST, "ORDER4021", "잘못된 주문 상태입니다."),
+    @ExplainError("이미 취소된 주문")
+    ALREADY_CANCELED(HttpStatus.BAD_REQUEST, "ORDER4022", "이미 취소된 주문입니다."),
+    @ExplainError("중복 승인 시도")
+    DUPLICATE_APPROVAL(HttpStatus.CONFLICT, "ORDER4023", "이미 승인된 주문입니다.");
 
 
 
