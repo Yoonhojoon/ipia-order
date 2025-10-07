@@ -54,6 +54,7 @@ class OrderTest {
     void transitionToPaidFromAlreadyPaidOrder() {
         // given
         Order order = Order.create(1L, 1000L);
+        order.transitionToPending(); // PENDING 상태로 전이
         order.transitionToPaid(); // 이미 결제 완료 상태
 
         // when & then
@@ -80,6 +81,7 @@ class OrderTest {
     void transitionToPaidFromCompletedOrder() {
         // given
         Order order = Order.create(1L, 1000L);
+        order.transitionToPending(); // PENDING 상태로 전이
         order.transitionToPaid();
         order.transitionToCompleted(); // 완료 상태
 
@@ -107,6 +109,7 @@ class OrderTest {
     void transitionToCanceledFromCompletedOrder() {
         // given
         Order order = Order.create(1L, 1000L);
+        order.transitionToPending(); // PENDING 상태로 전이
         order.transitionToPaid();
         order.transitionToCompleted(); // 완료 상태
 
@@ -121,6 +124,7 @@ class OrderTest {
     void transitionToCanceledFromPaidOrder() {
         // given
         Order order = Order.create(1L, 1000L);
+        order.transitionToPending(); // PENDING 상태로 전이
         order.transitionToPaid(); // 결제 완료 상태
 
         // when & then
