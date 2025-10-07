@@ -78,7 +78,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(nonExistentMemberId, totalAmount, idempotencyKey))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.MEMBER_NOT_FOUND.getMessage());
+                    .hasMessage(OrderErrorStatus.MEMBER_NOT_FOUND.getCode());
         }
 
         @Test
@@ -105,7 +105,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(memberId, totalAmount, idempotencyKey))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INACTIVE_MEMBER.getMessage());
+                    .hasMessage(OrderErrorStatus.INACTIVE_MEMBER.getCode());
         }
 
         @Test
@@ -122,7 +122,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(memberId, negativeAmount, idempotencyKey))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_AMOUNT.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_AMOUNT.getCode());
         }
 
         @Test
@@ -139,7 +139,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(memberId, zeroAmount, idempotencyKey))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_AMOUNT.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_AMOUNT.getCode());
         }
 
         @Test
@@ -160,7 +160,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(memberId, totalAmount, duplicateKey))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.IDEMPOTENCY_CONFLICT.getMessage());
+                    .hasMessage(OrderErrorStatus.IDEMPOTENCY_CONFLICT.getCode());
         }
     }
 
@@ -180,7 +180,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.getOrder(nonExistentOrderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getMessage());
+                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getCode());
         }
 
         @Test
@@ -199,7 +199,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.getOrder(orderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.ACCESS_DENIED.getMessage());
+                    .hasMessage(OrderErrorStatus.ACCESS_DENIED.getCode());
         }
     }
 
@@ -219,7 +219,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.listOrders(memberId, status, invalidPage, size))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_PAGINATION.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_PAGINATION.getCode());
         }
 
         @Test
@@ -234,7 +234,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.listOrders(memberId, status, page, invalidSize))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_PAGINATION.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_PAGINATION.getCode());
         }
 
         @Test
@@ -252,7 +252,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.listOrders(nonExistentMemberId, status, page, size))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_FILTER.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_FILTER.getCode());
         }
     }
 
@@ -350,7 +350,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.handlePaymentApproved(nonExistentOrderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getMessage());
+                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getCode());
         }
 
         @Test
@@ -367,7 +367,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.handlePaymentApproved(orderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.DUPLICATE_APPROVAL.getMessage());
+                    .hasMessage(OrderErrorStatus.DUPLICATE_APPROVAL.getCode());
         }
 
         @Test
@@ -384,7 +384,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.handlePaymentApproved(orderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getCode());
         }
     }
 
@@ -404,7 +404,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.handlePaymentCanceled(nonExistentOrderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getMessage());
+                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getCode());
         }
 
         @Test
@@ -421,7 +421,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.handlePaymentCanceled(orderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getCode());
         }
     }
 
