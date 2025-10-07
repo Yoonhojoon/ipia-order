@@ -34,36 +34,38 @@ public enum OrderErrorStatus implements ErrorResponse {
     INVALID_TRANSITION_TO_CANCELED(HttpStatus.BAD_REQUEST, "ORDER4009", "현재 상태에서 취소로 전이할 수 없습니다."),
     @ExplainError("잘못된 주문 상태 전이 - 완료")
     INVALID_TRANSITION_TO_COMPLETED(HttpStatus.BAD_REQUEST, "ORDER4010", "현재 상태에서 완료로 전이할 수 없습니다."),
+    @ExplainError("잘못된 주문 상태 전이 - 결제 진행 중")
+    INVALID_TRANSITION_TO_PENDING(HttpStatus.BAD_REQUEST, "ORDER4011", "현재 상태에서 결제 진행 중으로 전이할 수 없습니다."),
 
     // 입력값 검증 관련
     @ExplainError("주문 ID가 필수 아님")
-    ORDER_ID_REQUIRED(HttpStatus.BAD_REQUEST, "ORDER4011", "주문 ID는 필수입니다."),
+    ORDER_ID_REQUIRED(HttpStatus.BAD_REQUEST, "ORDER4012", "주문 ID는 필수입니다."),
     @ExplainError("주문 상태가 필수 아님")
-    ORDER_STATUS_REQUIRED(HttpStatus.BAD_REQUEST, "ORDER4012", "주문 상태는 필수입니다."),
+    ORDER_STATUS_REQUIRED(HttpStatus.BAD_REQUEST, "ORDER4013", "주문 상태는 필수입니다."),
     @ExplainError("유효하지 않은 주문 상태")
-    INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "ORDER4013", "유효하지 않은 주문 상태입니다."),
+    INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "ORDER4014", "유효하지 않은 주문 상태입니다."),
 
     // OrderService 관련 추가 예외들
     @ExplainError("존재하지 않는 회원")
-    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER4014", "존재하지 않는 회원입니다."),
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER4015", "존재하지 않는 회원입니다."),
     @ExplainError("비활성 회원")
-    INACTIVE_MEMBER(HttpStatus.BAD_REQUEST, "ORDER4015", "비활성 회원입니다."),
+    INACTIVE_MEMBER(HttpStatus.BAD_REQUEST, "ORDER4016", "비활성 회원입니다."),
     @ExplainError("유효하지 않은 주문 금액")
-    INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "ORDER4016", "주문 금액은 0보다 커야 합니다."),
+    INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "ORDER4017", "주문 금액은 0보다 커야 합니다."),
     @ExplainError("멱등 키 충돌")
-    IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "ORDER4017", "동일한 멱등 키로 이미 처리된 요청입니다."),
+    IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "ORDER4018", "동일한 멱등 키로 이미 처리된 요청입니다."),
     @ExplainError("권한 없는 주문 조회")
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER4018", "해당 주문에 대한 접근 권한이 없습니다."),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER4019", "해당 주문에 대한 접근 권한이 없습니다."),
     @ExplainError("잘못된 필터 조건")
-    INVALID_FILTER(HttpStatus.BAD_REQUEST, "ORDER4019", "잘못된 필터 조건입니다."),
+    INVALID_FILTER(HttpStatus.BAD_REQUEST, "ORDER4020", "잘못된 필터 조건입니다."),
     @ExplainError("잘못된 페이지네이션 파라미터")
-    INVALID_PAGINATION(HttpStatus.BAD_REQUEST, "ORDER4020", "잘못된 페이지네이션 파라미터입니다."),
+    INVALID_PAGINATION(HttpStatus.BAD_REQUEST, "ORDER4021", "잘못된 페이지네이션 파라미터입니다."),
     @ExplainError("잘못된 주문 상태")
-    INVALID_ORDER_STATE(HttpStatus.BAD_REQUEST, "ORDER4021", "잘못된 주문 상태입니다."),
+    INVALID_ORDER_STATE(HttpStatus.BAD_REQUEST, "ORDER4022", "잘못된 주문 상태입니다."),
     @ExplainError("이미 취소된 주문")
-    ALREADY_CANCELED(HttpStatus.BAD_REQUEST, "ORDER4022", "이미 취소된 주문입니다."),
+    ALREADY_CANCELED(HttpStatus.BAD_REQUEST, "ORDER4023", "이미 취소된 주문입니다."),
     @ExplainError("중복 승인 시도")
-    DUPLICATE_APPROVAL(HttpStatus.CONFLICT, "ORDER4023", "이미 승인된 주문입니다.");
+    DUPLICATE_APPROVAL(HttpStatus.CONFLICT, "ORDER4024", "이미 승인된 주문입니다.");
 
 
 

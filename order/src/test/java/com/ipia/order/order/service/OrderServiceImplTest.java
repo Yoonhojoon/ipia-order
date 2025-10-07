@@ -8,14 +8,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
+import com.ipia.order.order.event.OrderCanceledEvent;
+import com.ipia.order.order.event.OrderCreatedEvent;
+import com.ipia.order.order.event.OrderPaidEvent;
 import com.ipia.order.order.repository.OrderRepository;
 import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
@@ -37,6 +42,9 @@ class OrderServiceImplTest {
     @Mock
     private MemberService memberService;
     
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+    
     // TODO: IdempotencyKeyService Mock 추가 (Phase 2 후반에 구현 예정)
     
     @InjectMocks
@@ -49,7 +57,7 @@ class OrderServiceImplTest {
     void setUp() {
         validMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword123!", null);
 
-        validOrder = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.PENDING);
+        validOrder = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.CREATED);
     }
 
     @Nested
@@ -182,7 +190,7 @@ class OrderServiceImplTest {
             long orderId = 1L;
             long unauthorizedMemberId = 2L; // 다른 회원
 
-            Order order = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.PENDING); // 다른 회원의 주문
+            Order order = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.CREATED); // 다른 회원의 주문
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(order));
@@ -204,7 +212,7 @@ class OrderServiceImplTest {
         void listOrders_WithInvalidPageNumber_ThrowsInvalidPaginationException() {
             // given
             Long memberId = 1L;
-            OrderStatus status = OrderStatus.PENDING;
+            OrderStatus status = OrderStatus.CREATED;
             int invalidPage = -1; // 음수 페이지
             int size = 10;
 
@@ -219,7 +227,7 @@ class OrderServiceImplTest {
         void listOrders_WithInvalidPageSize_ThrowsInvalidPaginationException() {
             // given
             Long memberId = 1L;
-            OrderStatus status = OrderStatus.PENDING;
+            OrderStatus status = OrderStatus.CREATED;
             int page = 0;
             int invalidSize = 0; // 0 또는 음수 크기
 
@@ -234,7 +242,7 @@ class OrderServiceImplTest {
         void listOrders_WithNonExistentMember_ThrowsInvalidFilterException() {
             // given
             Long nonExistentMemberId = 999L;
-            OrderStatus status = OrderStatus.PENDING;
+            OrderStatus status = OrderStatus.CREATED;
             int page = 0;
             int size = 10;
 
@@ -405,7 +413,7 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
 
-            Order unpaidOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.PENDING);
+            Order unpaidOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.CREATED);
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(unpaidOrder));
@@ -414,6 +422,80 @@ class OrderServiceImplTest {
             assertThatThrownBy(() -> orderService.handlePaymentCanceled(orderId))
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getMessage());
+        }
+    }
+
+    @Nested
+    @DisplayName("OrderService 이벤트 발행 테스트")
+    class OrderServiceEventPublishingTest {
+
+        @Test
+        @DisplayName("주문 생성 시 OrderCreatedEvent 발행")
+        void createOrder_PublishesOrderCreatedEvent() {
+            // given
+            long memberId = 1L;
+            long totalAmount = 10000L;
+            String idempotencyKey = "test-key";
+
+            given(memberService.findById(memberId))
+                    .willReturn(Optional.of(validMember));
+            given(orderRepository.save(any(Order.class)))
+                    .willReturn(validOrder);
+
+            // when
+            orderService.createOrder(memberId, totalAmount, idempotencyKey);
+
+            // then
+            ArgumentCaptor<OrderCreatedEvent> eventCaptor = ArgumentCaptor.forClass(OrderCreatedEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            OrderCreatedEvent capturedEvent = eventCaptor.getValue();
+            assertThat(capturedEvent.getOrderId()).isEqualTo(validOrder.getId());
+            assertThat(capturedEvent.getMemberId()).isEqualTo(memberId);
+            assertThat(capturedEvent.getTotalAmount()).isEqualTo(totalAmount);
+        }
+
+        @Test
+        @DisplayName("주문 취소 시 OrderCanceledEvent 발행")
+        void cancelOrder_PublishesOrderCanceledEvent() {
+            // given
+            long orderId = 1L;
+            String reason = "취소 사유";
+
+            given(orderRepository.findById(orderId))
+                    .willReturn(Optional.of(validOrder));
+
+            // when
+            orderService.cancelOrder(orderId, reason);
+
+            // then
+            ArgumentCaptor<OrderCanceledEvent> eventCaptor = ArgumentCaptor.forClass(OrderCanceledEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            OrderCanceledEvent capturedEvent = eventCaptor.getValue();
+            assertThat(capturedEvent.getOrderId()).isEqualTo(orderId);
+            assertThat(capturedEvent.getReason()).isEqualTo(reason);
+        }
+
+        @Test
+        @DisplayName("결제 승인 처리 시 OrderPaidEvent 발행")
+        void handlePaymentApproved_PublishesOrderPaidEvent() {
+            // given
+            long orderId = 1L;
+
+            given(orderRepository.findById(orderId))
+                    .willReturn(Optional.of(validOrder));
+
+            // when
+            orderService.handlePaymentApproved(orderId);
+
+            // then
+            ArgumentCaptor<OrderPaidEvent> eventCaptor = ArgumentCaptor.forClass(OrderPaidEvent.class);
+            verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            OrderPaidEvent capturedEvent = eventCaptor.getValue();
+            assertThat(capturedEvent.getOrderId()).isEqualTo(orderId);
+            assertThat(capturedEvent.getPaidAmount()).isEqualTo(validOrder.getTotalAmount());
         }
     }
 }
