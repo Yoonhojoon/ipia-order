@@ -36,7 +36,7 @@ public class Order extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private OrderStatus status = OrderStatus.PENDING;
+    private OrderStatus status = OrderStatus.CREATED;
 
     @Builder(access = AccessLevel.PROTECTED)
     private Order(Long memberId, Long totalAmount) {
@@ -53,13 +53,20 @@ public class Order extends BaseEntity {
                 .build();
     }
 
+    public void transitionToPending() {
+        requireStatus(OrderStatus.CREATED, OrderErrorStatus.INVALID_TRANSITION_TO_PENDING);
+        this.status = OrderStatus.PENDING;
+    }
+
     public void transitionToPaid() {
         requireStatus(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
         this.status = OrderStatus.PAID;
     }
 
     public void transitionToCanceled() {
-        requireStatus(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
+        if (this.status != OrderStatus.CREATED && this.status != OrderStatus.PENDING) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
+        }
         this.status = OrderStatus.CANCELED;
     }
 

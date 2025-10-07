@@ -3,12 +3,22 @@ package com.ipia.order.order.service;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ipia.order.common.exception.order.OrderHandler;
+import com.ipia.order.common.exception.order.status.OrderErrorStatus;
+import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
+import com.ipia.order.order.event.OrderCanceledEvent;
+import com.ipia.order.order.event.OrderCreatedEvent;
+import com.ipia.order.order.event.OrderPaidEvent;
 import com.ipia.order.order.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +36,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final MemberService memberService;
+    private final ApplicationEventPublisher eventPublisher;
     // TODO: IdempotencyKeyService 의존성 추가 (Phase 2 후반에 구현)
 
     @Override
