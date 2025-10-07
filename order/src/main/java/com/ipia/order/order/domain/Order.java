@@ -38,7 +38,7 @@ public class Order extends BaseEntity {
     @Column(name = "status", nullable = false)
     private OrderStatus status = OrderStatus.PENDING;
 
-    @Builder
+    @Builder(access = AccessLevel.PROTECTED)
     private Order(Long memberId, Long totalAmount) {
         validateMemberId(memberId);
         validateTotalAmount(totalAmount);
@@ -54,23 +54,17 @@ public class Order extends BaseEntity {
     }
 
     public void transitionToPaid() {
-        if (this.status != OrderStatus.PENDING) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
-        }
+        requireStatus(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
         this.status = OrderStatus.PAID;
     }
 
     public void transitionToCanceled() {
-        if (this.status != OrderStatus.PENDING) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
-        }
+        requireStatus(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
         this.status = OrderStatus.CANCELED;
     }
 
     public void transitionToCompleted() {
-        if (this.status != OrderStatus.PAID) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
-        }
+        requireStatus(OrderStatus.PAID, OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
         this.status = OrderStatus.COMPLETED;
     }
 
@@ -81,12 +75,17 @@ public class Order extends BaseEntity {
     }
 
     private void validateTotalAmount(Long totalAmount) {
-        if (totalAmount == null || totalAmount <= 0) {
-            if (totalAmount == null || totalAmount == 0) {
-                throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_AMOUNT);
-            } else {
-                throw new OrderHandler(OrderErrorStatus.NEGATIVE_ORDER_AMOUNT);
-            }
+        if (totalAmount == null || totalAmount == 0) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_AMOUNT);
+        }
+        if (totalAmount < 0) {
+            throw new OrderHandler(OrderErrorStatus.NEGATIVE_ORDER_AMOUNT);
+        }
+    }
+
+    private void requireStatus(OrderStatus expected, OrderErrorStatus errorOnMismatch) {
+        if (this.status != expected) {
+            throw new OrderHandler(errorOnMismatch);
         }
     }
 }
