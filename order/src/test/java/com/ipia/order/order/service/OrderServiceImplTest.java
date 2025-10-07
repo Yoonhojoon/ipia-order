@@ -273,7 +273,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(nonExistentOrderId, reason))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getMessage());
+                    .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getCode());
         }
 
         @Test
@@ -291,7 +291,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(orderId, reason))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.ALREADY_CANCELED.getMessage());
+                    .hasMessage(OrderErrorStatus.ALREADY_CANCELED.getCode());
         }
 
         @Test
@@ -309,7 +309,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(orderId, reason))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getMessage());
+                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getCode());
         }
 
         @Test
@@ -330,7 +330,7 @@ class OrderServiceImplTest {
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(orderId, reason))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.IDEMPOTENCY_CONFLICT.getMessage());
+                    .hasMessage(OrderErrorStatus.IDEMPOTENCY_CONFLICT.getCode());
         }
     }
 
