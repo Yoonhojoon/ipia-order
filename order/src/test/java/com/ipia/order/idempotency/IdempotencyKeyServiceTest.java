@@ -14,7 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,7 +34,7 @@ class IdempotencyKeyServiceTest {
 
     @BeforeEach
     void setUp() {
-        sut = new IdempotencyKeyServiceImpl(repository);
+        sut = new IdempotencyKeyServiceImpl(repository, new ObjectMapper());
     }
 
     private static final String ENDPOINT = "POST /api/orders";
@@ -58,23 +60,23 @@ class IdempotencyKeyServiceTest {
     class ExecuteWithIdempotencySuccesses {
 
         @Test
-        @DisplayName("캐시 미스: operation 결과를 반환한다")
+        @DisplayName("캐시 미스: operation(Map) 결과를 반환한다")
         void cacheMiss_returnsOperationResult() {
-            Supplier<String> op = () -> "ok";
-            String result = sut.executeWithIdempotency(ENDPOINT, "fresh-key", op);
-            assertThat(result).isEqualTo("ok");
+            Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "ok");
+            Map<String, Object> result = sut.executeWithIdempotency(ENDPOINT, "fresh-key", op);
+            assertThat(result.get("result")).isEqualTo("ok");
         }
 
         @Test
-        @DisplayName("정상 키: 예외 없이 수행된다")
+        @DisplayName("정상 키: 예외 없이 수행되고 Map 반환")
         void validKey_runsWithoutException() {
-            Supplier<Integer> op = () -> 42;
+            Supplier<Map<String, Object>> op = () -> java.util.Map.of("v", 1);
             org.assertj.core.api.Assertions.assertThatCode(() -> sut.executeWithIdempotency(ENDPOINT, "valid", op))
                     .doesNotThrowAnyException();
         }
 
         @Test
-        @DisplayName("캐시 히트: 저장된 응답을 반환해야 한다(Red)")
+        @DisplayName("캐시 히트: 저장된 Map 응답을 반환해야 한다(Red→Green 예정)")
         void cacheHit_returnsStoredResponse() {
             // given
             String key = "hit";
@@ -82,9 +84,9 @@ class IdempotencyKeyServiceTest {
             given(repository.findByEndpointAndKey(ENDPOINT, key)).willReturn(java.util.Optional.of(stored));
 
             // when
-            Supplier<String> op = () -> "should-not-run";
+            Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "should-not-run");
 
-            // then: 현재 구현은 deserialize 미구현이므로 실패(Red)해야 함
+            // then: 현재 구현은 역직렬화 Object→Map 캐스트 가능, 정책에 맞추어 예외 없이 동작해야 함
             org.assertj.core.api.Assertions.assertThatCode(() -> sut.executeWithIdempotency(ENDPOINT, key, op))
                     .doesNotThrowAnyException();
         }
