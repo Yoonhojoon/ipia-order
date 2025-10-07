@@ -40,6 +40,8 @@ public class Order extends BaseEntity {
 
     @Builder
     private Order(Long memberId, Long totalAmount) {
+        validateMemberId(memberId);
+        validateTotalAmount(totalAmount);
         this.memberId = memberId;
         this.totalAmount = totalAmount;
     }
@@ -52,15 +54,39 @@ public class Order extends BaseEntity {
     }
 
     public void transitionToPaid() {
+        if (this.status != OrderStatus.PENDING) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
+        }
         this.status = OrderStatus.PAID;
     }
 
     public void transitionToCanceled() {
+        if (this.status != OrderStatus.PENDING) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
+        }
         this.status = OrderStatus.CANCELED;
     }
 
     public void transitionToCompleted() {
+        if (this.status != OrderStatus.PAID) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
+        }
         this.status = OrderStatus.COMPLETED;
     }
 
+    private void validateMemberId(Long memberId) {
+        if (memberId == null) {
+            throw new OrderHandler(OrderErrorStatus.MEMBER_ID_REQUIRED);
+        }
+    }
+
+    private void validateTotalAmount(Long totalAmount) {
+        if (totalAmount == null || totalAmount <= 0) {
+            if (totalAmount == null || totalAmount == 0) {
+                throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_AMOUNT);
+            } else {
+                throw new OrderHandler(OrderErrorStatus.NEGATIVE_ORDER_AMOUNT);
+            }
+        }
+    }
 }
