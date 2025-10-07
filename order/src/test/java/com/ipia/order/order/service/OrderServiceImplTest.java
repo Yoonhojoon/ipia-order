@@ -18,14 +18,17 @@ import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
-import com.ipia.order.order.event.OrderCanceledEvent;
 import com.ipia.order.order.event.OrderCreatedEvent;
 import com.ipia.order.order.event.OrderPaidEvent;
 import com.ipia.order.order.repository.OrderRepository;
 import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
+import java.lang.reflect.Field;
 import java.util.Optional;
+import java.util.Collections;
 
 /**
  * OrderService 실패 케이스 테스트
@@ -93,7 +96,7 @@ class OrderServiceImplTest {
             Member inactiveMember = Member.createTestMember(memberId, "홍길동", "hong@example.com", "encodedPassword123!", null);
             // 비활성 회원으로 설정
             try {
-                java.lang.reflect.Field isActiveField = Member.class.getDeclaredField("isActive");
+                Field isActiveField = Member.class.getDeclaredField("isActive");
                 isActiveField.setAccessible(true);
                 isActiveField.set(inactiveMember, false);
             } catch (Exception e) {
@@ -269,6 +272,9 @@ class OrderServiceImplTest {
 
             given(memberService.findById(memberId))
                     .willReturn(Optional.of(validMember));
+            given(orderRepository.findByMemberIdAndStatus(memberId, status, 
+                    PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
             java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
@@ -285,6 +291,9 @@ class OrderServiceImplTest {
             int page = 0;
             int size = 20;
 
+            given(orderRepository.findAll(PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(Collections.emptyList()));
+
             // when
             java.util.List<Order> result = orderService.listOrders(null, null, page, size);
 
@@ -300,6 +309,10 @@ class OrderServiceImplTest {
             OrderStatus status = OrderStatus.CREATED;
             int page = 1;
             int size = 5;
+
+            given(orderRepository.findByStatus(status, 
+                    PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
             java.util.List<Order> result = orderService.listOrders(null, status, page, size);
@@ -320,6 +333,9 @@ class OrderServiceImplTest {
 
             given(memberService.findById(memberId))
                     .willReturn(Optional.of(validMember));
+            given(orderRepository.findByMemberIdAndStatus(memberId, status, 
+                    PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
             java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
@@ -327,6 +343,110 @@ class OrderServiceImplTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("회원 ID와 상태로 실제 주문 목록 조회 성공")
+        void listOrders_WithMemberIdAndStatus_ReturnsOrders() {
+            // given
+            Long memberId = 1L;
+            OrderStatus status = OrderStatus.CREATED;
+            int page = 0;
+            int size = 10;
+            
+            Order order1 = Order.createTestOrder(1L, memberId, 10000L, status);
+            Order order2 = Order.createTestOrder(2L, memberId, 20000L, status);
+            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
+
+            given(memberService.findById(memberId))
+                    .willReturn(Optional.of(validMember));
+            given(orderRepository.findByMemberIdAndStatus(memberId, status, 
+                    PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(expectedOrders));
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(2);
+            assertThat(result).containsExactlyInAnyOrder(order1, order2);
+        }
+
+        @Test
+        @DisplayName("회원 ID만으로 주문 목록 조회 성공")
+        void listOrders_WithMemberIdOnly_ReturnsOrders() {
+            // given
+            Long memberId = 1L;
+            int page = 0;
+            int size = 10;
+            
+            Order order1 = Order.createTestOrder(1L, memberId, 10000L, OrderStatus.CREATED);
+            Order order2 = Order.createTestOrder(2L, memberId, 20000L, OrderStatus.PAID);
+            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
+
+            given(memberService.findById(memberId))
+                    .willReturn(Optional.of(validMember));
+            given(orderRepository.findByMemberId(memberId, 
+                    PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(expectedOrders));
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(memberId, null, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(2);
+            assertThat(result).containsExactlyInAnyOrder(order1, order2);
+        }
+
+        @Test
+        @DisplayName("상태만으로 주문 목록 조회 성공")
+        void listOrders_WithStatusOnly_ReturnsOrders() {
+            // given
+            OrderStatus status = OrderStatus.PAID;
+            int page = 0;
+            int size = 10;
+            
+            Order order1 = Order.createTestOrder(1L, 1L, 10000L, status);
+            Order order2 = Order.createTestOrder(2L, 2L, 20000L, status);
+            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
+
+            given(orderRepository.findByStatus(status, 
+                    PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(expectedOrders));
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(null, status, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(2);
+            assertThat(result).containsExactlyInAnyOrder(order1, order2);
+        }
+
+        @Test
+        @DisplayName("필터 없이 전체 주문 목록 조회 성공")
+        void listOrders_NoFilters_ReturnsAllOrders() {
+            // given
+            int page = 0;
+            int size = 20;
+            
+            Order order1 = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.CREATED);
+            Order order2 = Order.createTestOrder(2L, 2L, 20000L, OrderStatus.PAID);
+            Order order3 = Order.createTestOrder(3L, 3L, 30000L, OrderStatus.COMPLETED);
+            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2, order3);
+
+            given(orderRepository.findAll(PageRequest.of(page, size)))
+                    .willReturn(new PageImpl<>(expectedOrders));
+
+            // when
+            java.util.List<Order> result = orderService.listOrders(null, null, page, size);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(3);
+            assertThat(result).containsExactlyInAnyOrder(order1, order2, order3);
         }
     }
 
