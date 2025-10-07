@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import com.ipia.order.idempotency.service.IdempotencyKeyService;
 
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
@@ -48,7 +49,8 @@ class OrderServiceImplTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     
-    // TODO: IdempotencyKeyService Mock 추가 (Phase 2 후반에 구현 예정)
+    @Mock
+    private IdempotencyKeyService idempotencyKeyService;
     
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -61,6 +63,13 @@ class OrderServiceImplTest {
         validMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword123!", null);
 
         validOrder = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.CREATED);
+
+        // 기본 동작: 멱등 키가 주어지면 공급자(operation)를 실행해 결과를 반환
+        lenient().when(idempotencyKeyService.executeWithIdempotency(anyString(), anyString(), any()))
+                .thenAnswer(invocation -> {
+                    java.util.function.Supplier<?> op = invocation.getArgument(2);
+                    return op.get();
+                });
     }
 
     @Nested
@@ -157,9 +166,9 @@ class OrderServiceImplTest {
             given(memberService.findById(memberId))
                     .willReturn(Optional.of(validMember));
             
-            // TODO: IdempotencyKeyService Mock 설정 (Phase 2 후반에 구현)
-            // given(idempotencyKeyService.existsByKeyAndEndpoint(duplicateKey, "POST /api/orders"))
-            //         .willReturn(true);
+            // 멱등 서비스가 중복 키 충돌을 유발하도록 설정
+            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(duplicateKey), any()))
+                    .willThrow(new OrderHandler(OrderErrorStatus.IDEMPOTENCY_CONFLICT));
 
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(memberId, totalAmount, duplicateKey))
@@ -542,6 +551,13 @@ class OrderServiceImplTest {
             Order savedOrder = Order.createTestOrder(10L, memberId, totalAmount, OrderStatus.CREATED);
             given(orderRepository.save(any(Order.class)))
                     .willReturn(savedOrder);
+
+            // 멱등 서비스가 공급자를 실행하도록 설정(명시)
+            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(idempotencyKey), any()))
+                    .willAnswer(invocation -> {
+                        java.util.function.Supplier<Order> op = invocation.getArgument(2);
+                        return op.get();
+                    });
 
             // when
             Order result = orderService.createOrder(memberId, totalAmount, idempotencyKey);
