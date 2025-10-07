@@ -26,68 +26,32 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     @Override
     @Transactional
     public <T> T executeWithIdempotency(String endpoint, String key, Supplier<T> operation) {
-        validateKey(key);
-
-        Optional<IdempotencyKey> existing = findByIdempotencyKey(endpoint, key);
-        if (existing.isPresent()) {
-            return deserialize(existing.get().getResponseJson());
-        }
-
-        T result;
-        try {
-            result = operation.get();
-        } catch (RuntimeException e) {
-            throw e; // 비즈니스 예외 전파
-        }
-
-        String responseJson = serialize(result);
-        saveIdempotencyKey(endpoint, key, responseJson);
-        return result;
+        throw new UnsupportedOperationException("not implemented");
     }
 
     @Override
     @Cacheable(cacheNames = CACHE_NAME, key = "#endpoint + ':' + #key")
     public Optional<IdempotencyKey> findByIdempotencyKey(String endpoint, String key) {
-        validateKey(key);
-        try {
-            return repository.findByEndpointAndKey(endpoint, key);
-        } catch (RuntimeException e) {
-            throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
-        }
+        throw new UnsupportedOperationException("not implemented");
     }
 
     @Override
     @Transactional
     @CachePut(cacheNames = CACHE_NAME, key = "#endpoint + ':' + #key")
     public IdempotencyKey saveIdempotencyKey(String endpoint, String key, String responseJson) {
-        if (responseJson == null) {
-            throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
-        }
-        try {
-            IdempotencyKey entity = new IdempotencyKey(endpoint, key, responseJson, Instant.now());
-            return repository.save(entity);
-        } catch (RuntimeException e) {
-            throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
-        }
+        throw new UnsupportedOperationException("not implemented");
     }
 
     private void validateKey(String key) {
-        if (key == null || key.trim().isEmpty()) {
-            throw new IdempotencyHandler(IdempotencyErrorStatus.INVALID_IDEMPOTENCY_KEY);
-        }
+        throw new UnsupportedOperationException("not implemented");
     }
 
     private <T> String serialize(T result) {
-        try {
-            return String.valueOf(result); // TODO: ObjectMapper 주입 후 교체
-        } catch (RuntimeException e) {
-            throw new IdempotencyHandler(IdempotencyErrorStatus.RESPONSE_SERIALIZATION_ERROR);
-        }
+        throw new UnsupportedOperationException("not implemented");
     }
 
     private <T> T deserialize(String json) {
-        // 테스트 단계에서는 사용하지 않음. 실제 구현 시 ObjectMapper 사용
-        throw new UnsupportedOperationException("deserialize not implemented");
+        throw new UnsupportedOperationException("not implemented");
     }
 }
 
