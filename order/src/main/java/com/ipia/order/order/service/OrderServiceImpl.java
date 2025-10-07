@@ -122,7 +122,9 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrderById(orderId);
         validateOrderForPaymentCancellation(order);
 
-        // 성공 경로는 이번 단계 테스트 범위 밖(멱등/결제 도메인과 연동) — 보류
+        order.transitionToCanceled();
+        Order saved = orderRepository.save(order);
+        eventPublisher.publishEvent(OrderCanceledEvent.of(saved.getId(), null));
     }
 
     // ==================== Private Helper Methods ====================
