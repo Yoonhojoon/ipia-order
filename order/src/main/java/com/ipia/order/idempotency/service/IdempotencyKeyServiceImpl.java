@@ -11,10 +11,14 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,24 +26,67 @@ import java.util.function.Supplier;
 public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
 
     private static final String CACHE_NAME = "idemp";
+    private static final String REDIS_NAMESPACE = "idemp:";
+    private static final String REDIS_LOCK_NAMESPACE = "idemp:lock:";
+    private static final Duration RESERVATION_TTL = Duration.ofMinutes(10);
+    private static final String FIELD_STATUS = "status";
+    private static final String FIELD_RESPONSE = "response";
+    private static final String FIELD_CREATED_AT = "created_at";
+    private static final String FIELD_EXPIRES_AT = "expires_at";
+    private static final String STATUS_COMPLETED = "COMPLETED";
+    private static final String STATUS_PENDING = "PENDING";
 
     private final IdempotencyKeyRepository repository;
     private final ObjectMapper objectMapper;
+    
+    // 선택적 주입: 단위 테스트에서는 없어도 동작하도록
+    @Autowired(required = false)
+    private StringRedisTemplate redisTemplate;
 
     @Override
     @Transactional
     public <T> T executeWithIdempotency(String endpoint, String key, Supplier<T> operation) {
         validateKey(key);
 
+        // 1) Redis 해시 우선 조회 (COMPLETED 응답 재활용)
+        String dataKey = buildDataKey(endpoint, key);
+        Optional<String> cachedResponse = readCompletedResponseFromRedis(dataKey);
+        if (cachedResponse.isPresent()) {
+            return deserialize(cachedResponse.get());
+        }
+
+        // 2) DB 조회 (기존 JPA 저장소)
         Optional<IdempotencyKey> existing = findByIdempotencyKey(endpoint, key);
         if (existing.isPresent()) {
             return deserialize(existing.get().getResponseJson());
         }
 
-        T result = operation.get();
-        String responseJson = serialize(result);
-        saveIdempotencyKey(endpoint, key, responseJson);
-        return result;
+        // Redis를 사용할 수 있으면 예약(PENDING) 락을 시도
+        String lockKey = buildLockKey(endpoint, key);
+        boolean acquired = tryAcquireReservation(lockKey);
+        if (!acquired) {
+            // 이미 처리 중이거나 직후 완료된 경우: 재조회하여 완료 응답이 있으면 재사용, 없으면 충돌 반환
+            Optional<String> againFromRedis = readCompletedResponseFromRedis(dataKey);
+            if (againFromRedis.isPresent()) {
+                return deserialize(againFromRedis.get());
+            }
+            Optional<IdempotencyKey> after = findByIdempotencyKey(endpoint, key);
+            if (after.isPresent()) {
+                return deserialize(after.get().getResponseJson());
+            }
+            throw new IdempotencyHandler(IdempotencyErrorStatus.CONCURRENT_CONFLICT);
+        }
+
+        try {
+            T result = operation.get();
+            String responseJson = serialize(result);
+            saveIdempotencyKey(endpoint, key, responseJson);
+            writeCompletedToRedis(dataKey, responseJson);
+            return result;
+        } finally {
+            // 락 해제: TTL이 있지만 완료 시 즉시 해제 시도
+            releaseReservation(lockKey);
+        }
     }
 
     @Override
@@ -71,6 +118,72 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     private void validateKey(String key) {
         if (key == null || key.trim().isEmpty()) {
             throw new IdempotencyHandler(IdempotencyErrorStatus.INVALID_IDEMPOTENCY_KEY);
+        }
+    }
+
+    private String buildDataKey(String endpoint, String key) {
+        return REDIS_NAMESPACE + encode(endpoint) + ':' + encode(key);
+    }
+
+    private String buildLockKey(String endpoint, String key) {
+        return REDIS_LOCK_NAMESPACE + encode(endpoint) + ':' + encode(key);
+    }
+
+    private String encode(String raw) {
+        // 간단한 키 인코딩: 공백 및 콜론 등 구분자 치환
+        return raw.replace(" ", "_").replace(":", "|");
+    }
+
+    private boolean tryAcquireReservation(String lockKey) {
+        if (redisTemplate == null) return true; // Redis 미사용 환경에서는 통과
+        // 짧은 재시도 정책(스핀): 경합 시 짧게 재시도 후 포기
+        int attempts = 3;
+        while (attempts-- > 0) {
+            Boolean ok = redisTemplate.opsForValue().setIfAbsent(lockKey, STATUS_PENDING, RESERVATION_TTL);
+            if (Boolean.TRUE.equals(ok)) return true;
+            try { Thread.sleep(30); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+        }
+        return false;
+    }
+
+    private void releaseReservation(String lockKey) {
+        if (redisTemplate == null) return;
+        try {
+            redisTemplate.delete(lockKey);
+        } catch (RuntimeException ignored) {
+            // TTL에 의해 자연 해제됨
+        }
+    }
+
+    private Optional<String> readCompletedResponseFromRedis(String dataKey) {
+        if (redisTemplate == null) return Optional.empty();
+        try {
+            String status = (String) redisTemplate.opsForHash().get(dataKey, FIELD_STATUS);
+            if (STATUS_COMPLETED.equals(status)) {
+                String response = (String) redisTemplate.opsForHash().get(dataKey, FIELD_RESPONSE);
+                if (response != null) return Optional.of(response);
+            }
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
+    private void writeCompletedToRedis(String dataKey, String responseJson) {
+        if (redisTemplate == null) return;
+        try {
+            Instant now = Instant.now();
+            Instant expiresAt = now.plus(RESERVATION_TTL);
+            Map<String, String> map = Map.of(
+                    FIELD_STATUS, STATUS_COMPLETED,
+                    FIELD_RESPONSE, responseJson,
+                    FIELD_CREATED_AT, String.valueOf(now.toEpochMilli()),
+                    FIELD_EXPIRES_AT, String.valueOf(expiresAt.toEpochMilli())
+            );
+            redisTemplate.opsForHash().putAll(dataKey, map);
+            redisTemplate.expire(dataKey, RESERVATION_TTL);
+        } catch (RuntimeException ignored) {
+            // 캐시 저장 실패는 기능 저하로 묵살 (DB에는 저장됨)
         }
     }
 
