@@ -114,4 +114,27 @@ public class Order extends BaseEntity {
         return this.status == OrderStatus.CREATED || this.status == OrderStatus.PENDING;
     }
 
+    /**
+     * 테스트용 Order 엔티티 생성 메서드
+     */
+    public static Order createTestOrder(Long id, Long memberId, Long totalAmount, OrderStatus status) {
+        Order order = Order.builder()
+                .memberId(memberId)
+                .totalAmount(totalAmount)
+                .build();
+        // Reflection을 사용하여 ID와 상태 설정 (테스트용)
+        try {
+            java.lang.reflect.Field idField = Order.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(order, id);
+            
+            java.lang.reflect.Field statusField = Order.class.getDeclaredField("status");
+            statusField.setAccessible(true);
+            statusField.set(order, status);
+        } catch (Exception e) {
+            throw new RuntimeException("테스트용 Order 생성 실패", e);
+        }
+        return order;
+    }
+
 }
