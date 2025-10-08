@@ -1,5 +1,7 @@
 package com.ipia.order.payment.domain;
 
+import com.ipia.order.common.exception.payment.PaymentHandler;
+import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import com.ipia.order.payment.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -119,8 +121,7 @@ public class Payment {
      * 결제 승인 처리
      * 
      * @param orderTotalAmount 주문 총액 (검증용)
-     * @throws IllegalStateException 현재 상태에서 승인 불가능한 경우
-     * @throws IllegalArgumentException 결제 금액이 주문 총액과 일치하지 않는 경우
+     * @throws PaymentHandler 현재 상태에서 승인 불가능한 경우 또는 결제 금액 불일치
      */
     public void approve(BigDecimal orderTotalAmount) {
         throw new UnsupportedOperationException("Not implemented yet");
@@ -131,8 +132,7 @@ public class Payment {
      * 
      * @param cancelAmount 취소 금액
      * @param reason 취소 사유
-     * @throws IllegalStateException 현재 상태에서 취소 불가능한 경우
-     * @throws IllegalArgumentException 취소 금액이 결제 금액을 초과하는 경우
+     * @throws PaymentHandler 현재 상태에서 취소 불가능한 경우 또는 취소 금액 초과
      */
     public void cancel(BigDecimal cancelAmount, String reason) {
         throw new UnsupportedOperationException("Not implemented yet");
@@ -143,8 +143,7 @@ public class Payment {
      * 
      * @param refundAmount 환불 금액
      * @param reason 환불 사유
-     * @throws IllegalStateException 현재 상태에서 환불 불가능한 경우
-     * @throws IllegalArgumentException 환불 금액이 취소 금액을 초과하는 경우
+     * @throws PaymentHandler 현재 상태에서 환불 불가능한 경우 또는 환불 금액 초과
      */
     public void refund(BigDecimal refundAmount, String reason) {
         throw new UnsupportedOperationException("Not implemented yet");

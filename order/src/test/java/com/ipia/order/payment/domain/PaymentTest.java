@@ -1,5 +1,7 @@
 package com.ipia.order.payment.domain;
 
+import com.ipia.order.common.exception.payment.PaymentHandler;
+import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import com.ipia.order.payment.enums.PaymentStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -88,7 +90,7 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.approve(differentAmount))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(PaymentHandler.class)
                 .hasMessageContaining("결제 금액이 주문 총액과 일치하지 않습니다");
         }
 
@@ -101,7 +103,7 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.approve(ORDER_TOTAL_AMOUNT))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(PaymentHandler.class)
                 .hasMessageContaining("결제 승인은 PENDING 상태에서만 가능합니다");
         }
 
@@ -115,7 +117,7 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.approve(ORDER_TOTAL_AMOUNT))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(PaymentHandler.class)
                 .hasMessageContaining("결제 승인은 PENDING 상태에서만 가능합니다");
         }
 
@@ -130,7 +132,7 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.approve(ORDER_TOTAL_AMOUNT))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(PaymentHandler.class)
                 .hasMessageContaining("결제 승인은 PENDING 상태에서만 가능합니다");
         }
     }
