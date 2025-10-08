@@ -16,6 +16,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.Duration;
@@ -28,6 +32,7 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
 
+    private static final Logger log = LoggerFactory.getLogger(IdempotencyKeyServiceImpl.class);
     private static final String CACHE_NAME = "idemp";
     private static final String REDIS_NAMESPACE = "idemp:";
     private static final String REDIS_LOCK_NAMESPACE = "idemp:lock:";
@@ -45,6 +50,32 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     // 선택적 주입: 단위 테스트에서는 없어도 동작하도록
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
+
+    @PostConstruct
+    public void checkRedisConnection() {
+        if (redisTemplate == null) {
+            log.warn("🚫 Redis 연결 없음 - 멱등성 서비스가 DB만 사용하여 동작합니다. (성능 최적화 불가)");
+            return;
+        }
+
+        try {
+            // Redis 연결 테스트
+            String testKey = "idempotency:health:check";
+            redisTemplate.opsForValue().set(testKey, "ok", Duration.ofSeconds(10));
+            String result = redisTemplate.opsForValue().get(testKey);
+            redisTemplate.delete(testKey);
+
+            if ("ok".equals(result)) {
+                log.info("✅ Redis 연결 성공 - 멱등성 서비스가 Redis를 활용하여 최적화된 성능으로 동작합니다.");
+                log.info("📊 Redis 기능: 캐싱, 동시성 제어, 빠른 응답 재사용");
+            } else {
+                log.error("❌ Redis 연결 실패 - 예상치 못한 응답: {}", result);
+            }
+        } catch (Exception e) {
+            log.error("❌ Redis 연결 실패 - 멱등성 서비스가 DB만 사용하여 동작합니다.", e);
+            log.error("🔧 Redis 설정을 확인하세요: spring.data.redis.host, spring.data.redis.port");
+        }
+    }
 
     @Override
     @Transactional

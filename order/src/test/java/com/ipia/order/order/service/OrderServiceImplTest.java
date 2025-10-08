@@ -555,7 +555,7 @@ class OrderServiceImplTest {
             // 멱등 서비스가 공급자를 실행하도록 설정(명시)
             given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(idempotencyKey), any(Class.class), any()))
                     .willAnswer(invocation -> {
-                        java.util.function.Supplier<Order> op = invocation.getArgument(2);
+                        java.util.function.Supplier<Order> op = invocation.getArgument(3);
                         return op.get();
                     });
 

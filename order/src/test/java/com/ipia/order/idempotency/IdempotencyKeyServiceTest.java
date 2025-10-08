@@ -64,7 +64,7 @@ class IdempotencyKeyServiceTest {
         void cacheMiss_returnsOperationResult() {
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "ok");
             @SuppressWarnings({"unchecked", "rawtypes"})
-            Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, "fresh-key", Object.class, op);
+            Map<String, Object> result = (Map<String, Object>) sut.executeWithIdempotency(ENDPOINT, "fresh-key", Object.class, (Supplier) op);
             assertThat(result.get("result")).isEqualTo("ok");
         }
 
@@ -74,7 +74,7 @@ class IdempotencyKeyServiceTest {
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("v", 1);
             org.assertj.core.api.Assertions.assertThatCode(() -> {
                 @SuppressWarnings({"unchecked", "rawtypes"})
-                Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, "valid", Object.class, op);
+                Map<String, Object> result = (Map<String, Object>) sut.executeWithIdempotency(ENDPOINT, "valid", Object.class, (Supplier) op);
             })
                     .doesNotThrowAnyException();
         }
@@ -93,7 +93,7 @@ class IdempotencyKeyServiceTest {
             // then: 현재 구현은 역직렬화 Object→Map 캐스트 가능, 정책에 맞추어 예외 없이 동작해야 함
             org.assertj.core.api.Assertions.assertThatCode(() -> {
                 @SuppressWarnings({"unchecked", "rawtypes"})
-                Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, key, Object.class, op);
+                Map<String, Object> result = (Map<String, Object>) sut.executeWithIdempotency(ENDPOINT, key, Object.class, (Supplier) op);
             })
                     .doesNotThrowAnyException();
         }
