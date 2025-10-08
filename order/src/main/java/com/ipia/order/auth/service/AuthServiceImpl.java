@@ -60,6 +60,7 @@ public class AuthServiceImpl implements AuthService {
                 .password(encodedPassword)
                 .build();
 
+        
         return memberRepository.save(member);
     }
 
