@@ -20,7 +20,7 @@ class OrderTest {
         // when & then
         assertThatThrownBy(() -> Order.create(memberId, negativeAmount))
                 .isInstanceOf(OrderHandler.class)
-                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.NEGATIVE_ORDER_AMOUNT);
+                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_ORDER_AMOUNT);
     }
 
     @Test

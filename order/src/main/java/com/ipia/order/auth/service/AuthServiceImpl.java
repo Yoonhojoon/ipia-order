@@ -21,7 +21,6 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoderUtil passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // removed legacy login(email,password)
 
     @Override
     public void logout(String token) {

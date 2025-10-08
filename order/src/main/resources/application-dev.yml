@@ -4,6 +4,14 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password: password
+  cache:
+    type: redis  # Redis 필수
+    cache-names: idemp
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # password: your_redis_password  # 필요 시 주석 해제
   h2:
     console:
       enabled: true

@@ -13,10 +13,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import com.ipia.order.idempotency.service.IdempotencyKeyService;
 
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.order.domain.Order;
+import com.ipia.order.order.domain.OrderTestBuilder;
 import com.ipia.order.order.enums.OrderStatus;
 import com.ipia.order.order.event.OrderCreatedEvent;
 import com.ipia.order.order.event.OrderPaidEvent;
@@ -48,7 +50,8 @@ class OrderServiceImplTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     
-    // TODO: IdempotencyKeyService Mock 추가 (Phase 2 후반에 구현 예정)
+    @Mock
+    private IdempotencyKeyService idempotencyKeyService;
     
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -60,7 +63,19 @@ class OrderServiceImplTest {
     void setUp() {
         validMember = Member.createTestMember(1L, "홍길동", "hong@example.com", "encodedPassword123!", null);
 
-        validOrder = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.CREATED);
+        validOrder = OrderTestBuilder.builder()
+                .id(1L)
+                .memberId(1L)
+                .totalAmount(10000L)
+                .status(OrderStatus.CREATED)
+                .build();
+
+        // 기본 동작: 멱등 키가 주어지면 공급자(operation)를 실행해 결과를 반환
+        lenient().when(idempotencyKeyService.executeWithIdempotency(anyString(), anyString(), any(Class.class), any()))
+                .thenAnswer(invocation -> {
+                    java.util.function.Supplier<?> op = invocation.getArgument(3);
+                    return op.get();
+                });
     }
 
     @Nested
@@ -157,9 +172,9 @@ class OrderServiceImplTest {
             given(memberService.findById(memberId))
                     .willReturn(Optional.of(validMember));
             
-            // TODO: IdempotencyKeyService Mock 설정 (Phase 2 후반에 구현)
-            // given(idempotencyKeyService.existsByKeyAndEndpoint(duplicateKey, "POST /api/orders"))
-            //         .willReturn(true);
+            // 멱등 서비스가 중복 키 충돌을 유발하도록 설정
+            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(duplicateKey), any(Class.class), any()))
+                    .willThrow(new OrderHandler(OrderErrorStatus.IDEMPOTENCY_CONFLICT));
 
             // when & then
             assertThatThrownBy(() -> orderService.createOrder(memberId, totalAmount, duplicateKey))
@@ -194,7 +209,12 @@ class OrderServiceImplTest {
             long orderId = 1L;
             long unauthorizedMemberId = 2L; // 다른 회원
 
-            Order order = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.CREATED); // 다른 회원의 주문
+            Order order = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.CREATED)
+                    .build(); // 다른 회원의 주문
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(order));
@@ -354,8 +374,18 @@ class OrderServiceImplTest {
             int page = 0;
             int size = 10;
             
-            Order order1 = Order.createTestOrder(1L, memberId, 10000L, status);
-            Order order2 = Order.createTestOrder(2L, memberId, 20000L, status);
+            Order order1 = OrderTestBuilder.builder()
+                    .id(1L)
+                    .memberId(memberId)
+                    .totalAmount(10000L)
+                    .status(status)
+                    .build();
+            Order order2 = OrderTestBuilder.builder()
+                    .id(2L)
+                    .memberId(memberId)
+                    .totalAmount(20000L)
+                    .status(status)
+                    .build();
             java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
 
             given(memberService.findById(memberId))
@@ -381,8 +411,18 @@ class OrderServiceImplTest {
             int page = 0;
             int size = 10;
             
-            Order order1 = Order.createTestOrder(1L, memberId, 10000L, OrderStatus.CREATED);
-            Order order2 = Order.createTestOrder(2L, memberId, 20000L, OrderStatus.PAID);
+            Order order1 = OrderTestBuilder.builder()
+                    .id(1L)
+                    .memberId(memberId)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.CREATED)
+                    .build();
+            Order order2 = OrderTestBuilder.builder()
+                    .id(2L)
+                    .memberId(memberId)
+                    .totalAmount(20000L)
+                    .status(OrderStatus.PAID)
+                    .build();
             java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
 
             given(memberService.findById(memberId))
@@ -408,8 +448,18 @@ class OrderServiceImplTest {
             int page = 0;
             int size = 10;
             
-            Order order1 = Order.createTestOrder(1L, 1L, 10000L, status);
-            Order order2 = Order.createTestOrder(2L, 2L, 20000L, status);
+            Order order1 = OrderTestBuilder.builder()
+                    .id(1L)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(status)
+                    .build();
+            Order order2 = OrderTestBuilder.builder()
+                    .id(2L)
+                    .memberId(2L)
+                    .totalAmount(20000L)
+                    .status(status)
+                    .build();
             java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
 
             given(orderRepository.findByStatus(status, 
@@ -432,9 +482,24 @@ class OrderServiceImplTest {
             int page = 0;
             int size = 20;
             
-            Order order1 = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.CREATED);
-            Order order2 = Order.createTestOrder(2L, 2L, 20000L, OrderStatus.PAID);
-            Order order3 = Order.createTestOrder(3L, 3L, 30000L, OrderStatus.COMPLETED);
+            Order order1 = OrderTestBuilder.builder()
+                    .id(1L)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.CREATED)
+                    .build();
+            Order order2 = OrderTestBuilder.builder()
+                    .id(2L)
+                    .memberId(2L)
+                    .totalAmount(20000L)
+                    .status(OrderStatus.PAID)
+                    .build();
+            Order order3 = OrderTestBuilder.builder()
+                    .id(3L)
+                    .memberId(3L)
+                    .totalAmount(30000L)
+                    .status(OrderStatus.COMPLETED)
+                    .build();
             java.util.List<Order> expectedOrders = java.util.List.of(order1, order2, order3);
 
             given(orderRepository.findAll(PageRequest.of(page, size)))
@@ -477,7 +542,12 @@ class OrderServiceImplTest {
             long orderId = 1L;
             String reason = "취소 사유";
 
-            Order canceledOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.CANCELED);
+            Order canceledOrder = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.CANCELED)
+                    .build();
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(canceledOrder));
@@ -495,7 +565,12 @@ class OrderServiceImplTest {
             long orderId = 1L;
             String reason = "취소 사유";
 
-            Order paidOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.PAID);
+            Order paidOrder = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.PAID)
+                    .build();
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(paidOrder));
@@ -539,9 +614,21 @@ class OrderServiceImplTest {
                     .willReturn(Optional.of(validMember));
 
             // save 시 ID가 설정된 엔티티를 반환하도록 스텁
-            Order savedOrder = Order.createTestOrder(10L, memberId, totalAmount, OrderStatus.CREATED);
+            Order savedOrder = OrderTestBuilder.builder()
+                    .id(10L)
+                    .memberId(memberId)
+                    .totalAmount(totalAmount)
+                    .status(OrderStatus.CREATED)
+                    .build();
             given(orderRepository.save(any(Order.class)))
                     .willReturn(savedOrder);
+
+            // 멱등 서비스가 공급자를 실행하도록 설정(명시)
+            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(idempotencyKey), any(Class.class), any()))
+                    .willAnswer(invocation -> {
+                        java.util.function.Supplier<Order> op = invocation.getArgument(3);
+                        return op.get();
+                    });
 
             // when
             Order result = orderService.createOrder(memberId, totalAmount, idempotencyKey);
@@ -589,7 +676,12 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
 
-            Order paidOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.PAID);
+            Order paidOrder = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.PAID)
+                    .build();
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(paidOrder));
@@ -606,7 +698,12 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
 
-            Order canceledOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.CANCELED);
+            Order canceledOrder = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.CANCELED)
+                    .build();
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(canceledOrder));
@@ -643,7 +740,12 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
 
-            Order unpaidOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.CREATED);
+            Order unpaidOrder = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.CREATED)
+                    .build();
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(unpaidOrder));
@@ -661,7 +763,12 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
             
-            Order pendingOrder = Order.createTestOrder(orderId, 1L, 10000L, OrderStatus.PENDING);
+            Order pendingOrder = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.PENDING)
+                    .build();
 
             given(orderRepository.findById(orderId))
                     .willReturn(Optional.of(pendingOrder));

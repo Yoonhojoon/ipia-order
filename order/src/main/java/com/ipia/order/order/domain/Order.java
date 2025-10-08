@@ -46,6 +46,19 @@ public class Order extends BaseEntity {
         this.totalAmount = totalAmount;
     }
 
+    /**
+     * 멱등성 서비스에서 사용하는 팩토리 메서드
+     * 캐시된 데이터로부터 Order 객체를 복원할 때 사용
+     */
+    public static Order restore(Long id, Long memberId, Long totalAmount, OrderStatus status) {
+        Order order = new Order();
+        order.id = id;
+        order.memberId = memberId;
+        order.totalAmount = totalAmount;
+        order.status = status != null ? status : OrderStatus.CREATED;
+        return order;
+    }
+
     public static Order create(Long memberId, Long totalAmount) {
         return Order.builder()
                 .memberId(memberId)
@@ -54,24 +67,22 @@ public class Order extends BaseEntity {
     }
 
     public void transitionToPending() {
-        requireStatus(OrderStatus.CREATED, OrderErrorStatus.INVALID_TRANSITION_TO_PENDING);
+        validateTransition(OrderStatus.CREATED, OrderErrorStatus.INVALID_TRANSITION_TO_PENDING);
         this.status = OrderStatus.PENDING;
     }
 
     public void transitionToPaid() {
-        requireStatus(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
+        validateTransition(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
         this.status = OrderStatus.PAID;
     }
 
     public void transitionToCanceled() {
-        if (this.status != OrderStatus.CREATED && this.status != OrderStatus.PENDING) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
-        }
+        validateCancellation();
         this.status = OrderStatus.CANCELED;
     }
 
     public void transitionToCompleted() {
-        requireStatus(OrderStatus.PAID, OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
+        validateTransition(OrderStatus.PAID, OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
         this.status = OrderStatus.COMPLETED;
     }
 
@@ -82,59 +93,25 @@ public class Order extends BaseEntity {
     }
 
     private void validateTotalAmount(Long totalAmount) {
-        if (totalAmount == null || totalAmount == 0) {
+        if (totalAmount == null || totalAmount <= 0) {
             throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_AMOUNT);
         }
-        if (totalAmount < 0) {
-            throw new OrderHandler(OrderErrorStatus.NEGATIVE_ORDER_AMOUNT);
+    }
+
+    private void validateTransition(OrderStatus expectedStatus, OrderErrorStatus errorStatus) {
+        if (this.status != expectedStatus) {
+            throw new OrderHandler(errorStatus);
         }
     }
 
-    private void requireStatus(OrderStatus expected, OrderErrorStatus errorOnMismatch) {
-        if (this.status != expected) {
-            throw new OrderHandler(errorOnMismatch);
+    private void validateCancellation() {
+        if (!isCancellable()) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
         }
     }
 
-    /**
-     * 테스트용 Order 생성 (Reflection 사용)
-     * @param id 주문 ID
-     * @param memberId 회원 ID
-     * @param totalAmount 주문 총액
-     * @param status 주문 상태
-     * @return 테스트용 Order 객체
-     */
-    public static Order createTestOrder(Long id, Long memberId, Long totalAmount, OrderStatus status) {
-        Order order = Order.builder()
-                .memberId(memberId)
-                .totalAmount(totalAmount)
-                .build();
-        
-        // Reflection을 사용하여 필드 설정
-        try {
-            // ID 필드 설정
-            java.lang.reflect.Field idField = Order.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(order, id);
-            
-            // status 필드 설정
-            java.lang.reflect.Field statusField = Order.class.getDeclaredField("status");
-            statusField.setAccessible(true);
-            statusField.set(order, status);
-            
-            // createdAt 필드 설정
-            java.lang.reflect.Field createdAtField = Order.class.getSuperclass().getDeclaredField("createdAt");
-            createdAtField.setAccessible(true);
-            createdAtField.set(order, java.time.LocalDateTime.now());
-            
-            // updatedAt 필드 설정
-            java.lang.reflect.Field updatedAtField = Order.class.getSuperclass().getDeclaredField("updatedAt");
-            updatedAtField.setAccessible(true);
-            updatedAtField.set(order, java.time.LocalDateTime.now());
-        } catch (Exception e) {
-            throw new RuntimeException("테스트용 Order 생성 실패", e);
-        }
-        
-        return order;
+    private boolean isCancellable() {
+        return this.status == OrderStatus.CREATED || this.status == OrderStatus.PENDING;
     }
+
 }

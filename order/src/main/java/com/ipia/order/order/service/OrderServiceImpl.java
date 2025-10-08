@@ -2,10 +2,13 @@ package com.ipia.order.order.service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.order.event.OrderPaidEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +21,7 @@ import com.ipia.order.order.enums.OrderStatus;
 import com.ipia.order.order.event.OrderCanceledEvent;
 import com.ipia.order.order.event.OrderCreatedEvent;
 import com.ipia.order.order.repository.OrderRepository;
+import com.ipia.order.idempotency.service.IdempotencyKeyService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,26 +39,30 @@ public class OrderServiceImpl implements OrderService {
     // ==================== Constants ====================
     private static final int MIN_PAGE = 0;
     private static final int MIN_SIZE = 1;
-    private static final String DUPLICATE_KEY_PREFIX = "duplicate";
+    private static final String CREATE_ORDER_ENDPOINT = "POST /api/orders";
 
     // ==================== Dependencies ====================
     private final OrderRepository orderRepository;
     private final MemberService memberService; // createOrder 등 다른 메서드에서 사용 예정
     private final ApplicationEventPublisher eventPublisher;
-    // TODO: IdempotencyKeyService 의존성 추가 (Phase 2 후반에 구현)
+    private final IdempotencyKeyService idempotencyKeyService;
 
     @Override
     @Transactional
     public Order createOrder(long memberId, long totalAmount, @Nullable String idempotencyKey) {
         validateMemberForOrder(memberId);
         validateOrderAmount(totalAmount);
-        validateIdempotencyKey(idempotencyKey);
+        Supplier<Order> operation = () -> {
+            Order order = Order.create(memberId, totalAmount);
+            Order saved = orderRepository.save(order);
+            eventPublisher.publishEvent(OrderCreatedEvent.of(saved.getId(), memberId, totalAmount));
+            return saved;
+        };
 
-        // 성공 경로 (성공 테스트는 없지만 자연스러운 흐름 유지)
-        Order order = Order.create(memberId, totalAmount);
-        Order saved = orderRepository.save(order);
-        eventPublisher.publishEvent(OrderCreatedEvent.of(saved.getId(), memberId, totalAmount));
-        return saved;
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
+            return operation.get();
+        }
+        return idempotencyKeyService.executeWithIdempotency(CREATE_ORDER_ENDPOINT, idempotencyKey, Order.class, operation);
     }
 
     @Override
@@ -69,7 +77,7 @@ public class OrderServiceImpl implements OrderService {
         validatePagination(page, size);
         validateMemberFilter(memberId);
 
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size);
         
         // 동적 쿼리 로직: 필터 조건에 따라 다른 Repository 메서드 호출
         if (memberId != null && status != null) {
@@ -161,15 +169,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    /**
-     * 멱등성 키의 유효성을 검증합니다.
-     */
-    private void validateIdempotencyKey(@Nullable String idempotencyKey) {
-        // 멱등성: 추후 서비스 연동. 테스트 용 최소 구현(duplicate* 키는 충돌로 간주)
-        if (idempotencyKey != null && idempotencyKey.startsWith(DUPLICATE_KEY_PREFIX)) {
-            throw new OrderHandler(OrderErrorStatus.IDEMPOTENCY_CONFLICT);
-        }
-    }
+    
 
     /**
      * 페이지네이션 파라미터의 유효성을 검증합니다.

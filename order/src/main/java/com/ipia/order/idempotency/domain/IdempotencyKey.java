@@ -1,23 +1,47 @@
 package com.ipia.order.idempotency.domain;
 
+import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Objects;
 
 /**
- * 멱등성 키 엔티티(영속 모델은 이후 단계에서 구체화).
+ * 멱등성 키 엔티티.
  */
+@Entity
+@Table(name = "idempotency_keys",
+        uniqueConstraints = @UniqueConstraint(name = "uk_idemp_endpoint_key", columnNames = {"endpoint", "idempotency_key"}))
 public class IdempotencyKey {
 
-    private final String endpoint;
-    private final String key;
-    private final String responseJson;
-    private final Instant createdAt;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 255)
+    private String endpoint;
+
+    @Column(name = "idempotency_key", nullable = false, length = 255)
+    private String key;
+
+    @Lob
+    @Column(name = "response_json", nullable = false)
+    private String responseJson;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    protected IdempotencyKey() {
+        // for JPA
+    }
 
     public IdempotencyKey(String endpoint, String key, String responseJson, Instant createdAt) {
         this.endpoint = endpoint;
         this.key = key;
         this.responseJson = responseJson;
         this.createdAt = createdAt;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public String getEndpoint() {
