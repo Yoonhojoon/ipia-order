@@ -47,17 +47,11 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     private final IdempotencyKeyRepository repository;
     private final ObjectMapper objectMapper;
     
-    // 선택적 주입: 단위 테스트에서는 없어도 동작하도록
-    @Autowired(required = false)
-    private StringRedisTemplate redisTemplate;
+    // Redis 필수: 멱등성 서비스는 Redis가 반드시 필요
+    private final StringRedisTemplate redisTemplate;
 
     @PostConstruct
     public void checkRedisConnection() {
-        if (redisTemplate == null) {
-            log.warn("🚫 Redis 연결 없음 - 멱등성 서비스가 DB만 사용하여 동작합니다. (성능 최적화 불가)");
-            return;
-        }
-
         try {
             // Redis 연결 테스트
             String testKey = "idempotency:health:check";
@@ -70,10 +64,12 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
                 log.info("📊 Redis 기능: 캐싱, 동시성 제어, 빠른 응답 재사용");
             } else {
                 log.error("❌ Redis 연결 실패 - 예상치 못한 응답: {}", result);
+                throw new IllegalStateException("Redis 연결이 올바르지 않습니다. 응답: " + result);
             }
         } catch (Exception e) {
-            log.error("❌ Redis 연결 실패 - 멱등성 서비스가 DB만 사용하여 동작합니다.", e);
+            log.error("❌ Redis 연결 실패 - 멱등성 서비스는 Redis가 필수입니다!", e);
             log.error("🔧 Redis 설정을 확인하세요: spring.data.redis.host, spring.data.redis.port");
+            throw new IllegalStateException("멱등성 서비스는 Redis 연결이 필수입니다. Redis를 시작하고 설정을 확인하세요.", e);
         }
     }
 
@@ -190,7 +186,6 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     }
 
     private boolean tryAcquireReservation(String lockKey) {
-        if (redisTemplate == null) return true; // Redis 미사용 환경에서는 통과
         // 짧은 재시도 정책(스핀): 경합 시 짧게 재시도 후 포기
         int attempts = 3;
         while (attempts-- > 0) {
@@ -202,7 +197,6 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     }
 
     private void releaseReservation(String lockKey) {
-        if (redisTemplate == null) return;
         try {
             redisTemplate.delete(lockKey);
         } catch (RuntimeException ignored) {
@@ -211,7 +205,6 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     }
 
     private Optional<String> readCompletedResponseFromRedis(String dataKey) {
-        if (redisTemplate == null) return Optional.empty();
         try {
             String status = (String) redisTemplate.opsForHash().get(dataKey, FIELD_STATUS);
             if (STATUS_COMPLETED.equals(status)) {
@@ -225,7 +218,6 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     }
 
     private void writeCompletedToRedis(String dataKey, String responseJson) {
-        if (redisTemplate == null) return;
         try {
             Instant now = Instant.now();
             Instant expiresAt = now.plus(RESERVATION_TTL);

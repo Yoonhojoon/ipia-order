@@ -5,7 +5,7 @@ spring:
     username: sa
     password: password
   cache:
-    type: redis
+    type: redis  # Redis 필수
     cache-names: idemp
   data:
     redis:

@@ -18,6 +18,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.HashOperations;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
@@ -30,11 +33,25 @@ class IdempotencyKeyServiceTest {
     @Mock
     IdempotencyKeyRepository repository;
 
+    @Mock
+    StringRedisTemplate redisTemplate;
+
+    @Mock
+    ValueOperations<String, String> valueOperations;
+
+    @Mock
+    HashOperations<String, Object, Object> hashOperations;
+
     IdempotencyKeyService sut;
 
     @BeforeEach
     void setUp() {
-        sut = new IdempotencyKeyServiceImpl(repository, new ObjectMapper());
+        // Redis Mock 설정 (lenient로 불필요한 stubbing 허용)
+        org.mockito.Mockito.lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        org.mockito.Mockito.lenient().when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        org.mockito.Mockito.lenient().when(redisTemplate.delete(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        
+        sut = new IdempotencyKeyServiceImpl(repository, new ObjectMapper(), redisTemplate);
     }
 
     private static final String ENDPOINT = "POST /api/orders";
@@ -62,6 +79,10 @@ class IdempotencyKeyServiceTest {
         @Test
         @DisplayName("캐시 미스: operation(Map) 결과를 반환한다")
         void cacheMiss_returnsOperationResult() {
+            // Redis Mock 설정: 캐시 미스 시나리오
+            given(hashOperations.get(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("status"))).willReturn(null);
+            given(valueOperations.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).willReturn(true);
+            
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "ok");
             @SuppressWarnings({"unchecked", "rawtypes"})
             Map<String, Object> result = (Map<String, Object>) sut.executeWithIdempotency(ENDPOINT, "fresh-key", Object.class, (Supplier) op);
@@ -71,6 +92,10 @@ class IdempotencyKeyServiceTest {
         @Test
         @DisplayName("정상 키: 예외 없이 수행되고 Map 반환")
         void validKey_runsWithoutException() {
+            // Redis Mock 설정: 캐시 미스 시나리오
+            given(hashOperations.get(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("status"))).willReturn(null);
+            given(valueOperations.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).willReturn(true);
+            
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("v", 1);
             org.assertj.core.api.Assertions.assertThatCode(() -> {
                 @SuppressWarnings({"unchecked", "rawtypes"})
@@ -82,6 +107,9 @@ class IdempotencyKeyServiceTest {
         @Test
         @DisplayName("캐시 히트: 저장된 Map 응답을 반환해야 한다(Red→Green 예정)")
         void cacheHit_returnsStoredResponse() {
+            // Redis Mock 설정: 캐시 미스 시나리오 (DB 조회로 fallback)
+            given(hashOperations.get(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("status"))).willReturn(null);
+            
             // given
             String key = "hit";
             IdempotencyKey stored = new IdempotencyKey(ENDPOINT, key, "{\"result\":\"ok\"}", Instant.now());
