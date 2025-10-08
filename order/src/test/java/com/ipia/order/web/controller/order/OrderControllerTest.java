@@ -51,7 +51,7 @@ class OrderControllerTest {
     void setUp() {
         // 공통 Mock 설정
         Order mockOrder = createMockOrder(1L, 1L, 10000L, OrderStatus.CREATED);
-        Order mockOrder2 = createMockOrder(2L, 1L, 20000L, OrderStatus.PENDING);
+        Order mockOrder2 = createMockOrder(2L, 1L, 20000L, OrderStatus.CONFIRMED);
         
         // 주문 생성 Mock
         Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(10000L), Mockito.any()))

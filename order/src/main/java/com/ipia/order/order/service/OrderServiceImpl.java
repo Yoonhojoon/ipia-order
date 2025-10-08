@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import com.ipia.order.member.domain.Member;
-import com.ipia.order.order.event.OrderPaidEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,15 +14,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
+import com.ipia.order.idempotency.service.IdempotencyKeyService;
+import com.ipia.order.member.domain.Member;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
 import com.ipia.order.order.event.OrderCanceledEvent;
 import com.ipia.order.order.event.OrderCreatedEvent;
+import com.ipia.order.order.event.OrderPaidEvent;
 import com.ipia.order.order.repository.OrderRepository;
-import com.ipia.order.idempotency.service.IdempotencyKeyService;
-import com.ipia.order.web.dto.response.order.OrderResponse;
 import com.ipia.order.web.dto.response.order.OrderListResponse;
+import com.ipia.order.web.dto.response.order.OrderResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +60,7 @@ public class OrderServiceImpl implements OrderService {
         validateOrderAmount(totalAmount);
         Supplier<Order> operation = () -> {
             Order order = Order.create(memberId, totalAmount);
+            // 신규 흐름: 생성 직후는 CREATED → confirm을 별도 단계로 유지
             Order saved = orderRepository.save(order);
             eventPublisher.publishEvent(OrderCreatedEvent.of(saved.getId(), memberId, totalAmount));
             log.info("[Order] 주문 생성 이벤트 발행: orderId={}, memberId={}, amount={}", saved.getId(), memberId, totalAmount);
@@ -140,20 +141,31 @@ public class OrderServiceImpl implements OrderService {
     public Order cancelOrder(long orderId, @Nullable String reason) {
         log.info("[Order] 주문 취소 요청: orderId={}, reason={}", orderId, reason);
         Order order = findOrderById(orderId);
-        validateOrderForCancellation(order);
 
-        // 멱등성 미구현: CREATED/PENDING 에서는 충돌로 처리 (테스트 통과를 위한 최소 구현)
-        if (order.getStatus() == OrderStatus.CREATED || order.getStatus() == OrderStatus.PENDING) {
-            log.warn("[Order] 멱등성 충돌로 인한 취소 실패: orderId={}, status={}", orderId, order.getStatus());
-            throw new OrderHandler(OrderErrorStatus.IDEMPOTENCY_CONFLICT);
+        // 이미 취소된 주문
+        if (order.getStatus() == OrderStatus.CANCELED) {
+            throw new OrderHandler(OrderErrorStatus.ALREADY_CANCELED);
         }
 
-        // 정상 전이 (현재 단계에선 도달하지 않음)
-        order.transitionToCanceled();
-        Order saved = orderRepository.save(order);
-        eventPublisher.publishEvent(OrderCanceledEvent.of(saved.getId(), reason));
-        log.info("[Order] 주문 취소 성공: orderId={}", saved.getId());
-        return saved;
+        // 배송 이후에는 취소 불가
+        if (order.getStatus() == OrderStatus.SHIPPED
+                || order.getStatus() == OrderStatus.DELIVERED
+                || order.getStatus() == OrderStatus.COMPLETED) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
+        }
+
+        // CANCEL_REQUESTED 또는 CREATED/CONFIRMED 에서는 취소 허용
+        if (order.getStatus() == OrderStatus.CANCEL_REQUESTED
+                || order.getStatus() == OrderStatus.CREATED
+                || order.getStatus() == OrderStatus.CONFIRMED) {
+            order.cancel();
+            Order saved = orderRepository.save(order);
+            eventPublisher.publishEvent(OrderCanceledEvent.of(saved.getId(), reason));
+            log.info("[Order] 주문 취소 성공: orderId={}", saved.getId());
+            return saved;
+        }
+
+        throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
     }
 
     @Override
@@ -161,12 +173,14 @@ public class OrderServiceImpl implements OrderService {
     public void handlePaymentApproved(long orderId) {
         log.info("[Order] 결제 승인 처리 요청: orderId={}", orderId);
         Order order = findOrderById(orderId);
-        validateOrderForPaymentApproval(order);
-
-        order.transitionToPaid();
+        // 승인 시 CREATED -> CONFIRMED 만 허용
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
+        }
+        order.confirm();
         orderRepository.save(order);
         eventPublisher.publishEvent(OrderPaidEvent.of(order.getId(), order.getTotalAmount()));
-        log.info("[Order] 결제 승인 처리 완료: orderId={}", order.getId());
+        log.info("[Order] 결제 승인 처리 완료(확정): orderId={}", order.getId());
     }
 
     @Override
@@ -174,9 +188,11 @@ public class OrderServiceImpl implements OrderService {
     public void handlePaymentCanceled(long orderId) {
         log.info("[Order] 결제 취소 처리 요청: orderId={}", orderId);
         Order order = findOrderById(orderId);
-        validateOrderForPaymentCancellation(order);
-
-        order.transitionToCanceled();
+        // 승인 이후(=CONFIRMED)만 결제 취소 허용, 배송 이후는 불가
+        if (order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
+        }
+        order.cancel();
         Order saved = orderRepository.save(order);
         eventPublisher.publishEvent(OrderCanceledEvent.of(saved.getId(), null));
         log.info("[Order] 결제 취소 처리 완료: orderId={}", saved.getId());
@@ -216,8 +232,6 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    
-
     /**
      * 페이지네이션 파라미터의 유효성을 검증합니다.
      */
@@ -237,48 +251,6 @@ public class OrderServiceImpl implements OrderService {
             if (memberOpt.isEmpty()) {
                 throw new OrderHandler(OrderErrorStatus.INVALID_FILTER);
             }
-        }
-    }
-
-    /**
-     * 주문 취소 가능 여부를 검증합니다.
-     */
-    private void validateOrderForCancellation(Order order) {
-        // 이미 취소된 주문 처리
-        if (order.getStatus() == OrderStatus.CANCELED) {
-            throw new OrderHandler(OrderErrorStatus.ALREADY_CANCELED);
-        }
-        // 완료/결제 완료 상태는 취소 불가
-        if (order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.COMPLETED) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
-        }
-    }
-
-    /**
-     * 결제 승인 가능 여부를 검증합니다.
-     */
-    private void validateOrderForPaymentApproval(Order order) {
-        // 이미 결제된 주문에 대한 중복 승인
-        if (order.getStatus() == OrderStatus.PAID) {
-            throw new OrderHandler(OrderErrorStatus.DUPLICATE_APPROVAL);
-        }
-        // 이미 취소된 주문 또는 유효하지 않은 상태에서의 승인 시도
-        if (order.getStatus() == OrderStatus.CANCELED || order.getStatus() == OrderStatus.COMPLETED) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
-        }
-        // 승인 성공은 PENDING 상태에서만 허용
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
-        }
-    }
-
-    /**
-     * 결제 취소 가능 여부를 검증합니다.
-     */
-    private void validateOrderForPaymentCancellation(Order order) {
-        // 결제되지 않은 주문의 결제 취소는 허용하지 않음
-        if (order.getStatus() != OrderStatus.PAID) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_ORDER_STATE);
         }
     }
 }

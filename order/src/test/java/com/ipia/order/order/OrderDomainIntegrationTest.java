@@ -11,8 +11,6 @@ import com.ipia.order.order.service.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,16 +74,19 @@ class OrderDomainIntegrationTest {
                 .role(MemberRole.USER)
                 .build());
 
-        // m1: CREATED 3건, PENDING 2건, PAID 1건 생성
+        // m1: CREATED 3건, CONFIRMED 2건, COMPLETED 1건 생성
         long[] amounts = {1000,2000,3000,4000,5000,6000};
         for (int i = 0; i < amounts.length; i++) {
             Order o = orderService.createOrder(m1.getId(), amounts[i], null);
             Order persisted = orderRepository.findById(o.getId()).orElseThrow();
             if (i >= 3 && i < 5) {
-                persisted.transitionToPending();
+                persisted.confirm();
             } else if (i == 5) {
-                persisted.transitionToPending();
-                persisted.transitionToPaid();
+                persisted.confirm();
+                persisted.startFulfillment();
+                persisted.ship();
+                persisted.deliver();
+                persisted.complete();
             }
             orderRepository.save(persisted);
         }
@@ -105,13 +106,58 @@ class OrderDomainIntegrationTest {
         assertThat(res2.getPage()).isEqualTo(1);
         assertThat(res2.getOrders().size()).isBetween(0, 3);
 
-        // 3) status=PAID만, size=10 페이지 0
-        var res3 = orderService.listOrders(null, "PAID", 0, 10);
-        assertThat(res3.getOrders()).extracting("status").containsOnly(OrderStatus.PAID);
+        // 3) status=COMPLETED만, size=10 페이지 0
+        var res3 = orderService.listOrders(null, "COMPLETED", 0, 10);
+        assertThat(res3.getOrders()).extracting("status").containsOnly(OrderStatus.COMPLETED);
 
         // 4) 필터 없음, size=5 페이지 0
         var res4 = orderService.listOrders(null, null, 0, 5);
         assertThat(res4.getOrders().size()).isBetween(1, 5);
+    }
+
+    @Test
+    @DisplayName("승인 처리 시 상태가 CONFIRMED로 전이된다")
+    void handlePaymentApproved_transitionToConfirmed() {
+        // given
+        Member member = memberRepository.save(Member.builder()
+                .name("payer")
+                .email("payer@example.com")
+                .password("encoded")
+                .role(MemberRole.USER)
+                .build());
+        Order created = orderService.createOrder(member.getId(), 20_000L, null);
+
+        // 승인 이전 상태 유지(CREATED)
+
+        // when
+        orderService.handlePaymentApproved(created.getId());
+
+        // then
+        Order found = orderRepository.findById(created.getId()).orElseThrow();
+        assertThat(found.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("주문 취소 처리 시 상태가 CANCELED로 전이된다")
+    void cancelOrder_transitionToCanceled() {
+        // given
+        Member member = memberRepository.save(Member.builder()
+                .name("canceler")
+                .email("canceler@example.com")
+                .password("encoded")
+                .role(MemberRole.USER)
+                .build());
+        Order created = orderService.createOrder(member.getId(), 30_000L, null);
+
+        // when: CREATED 단계에서 취소 요청 후 취소
+        Order pendingCancel = orderRepository.findById(created.getId()).orElseThrow();
+        pendingCancel.requestCancel();
+        orderRepository.save(pendingCancel);
+
+        Order canceled = orderService.cancelOrder(created.getId(), null);
+
+        // then
+        assertThat(canceled.getStatus()).isEqualTo(OrderStatus.CANCELED);
     }
 
     @Test
@@ -135,58 +181,6 @@ class OrderDomainIntegrationTest {
         var allByMember = orderRepository.findByMemberId(member.getId());
         long count = allByMember.stream().filter(o -> o.getTotalAmount() == 12_345L).count();
         assertThat(count).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("결제 승인 처리 시 상태가 PAID로 전이된다")
-    void handlePaymentApproved_transitionToPaid() {
-        // given
-        Member member = memberRepository.save(Member.builder()
-                .name("payer")
-                .email("payer@example.com")
-                .password("encoded")
-                .role(MemberRole.USER)
-                .build());
-        Order created = orderService.createOrder(member.getId(), 20_000L, null);
-
-        // pending 전이 전제: 도메인 규칙에 따라 CREATED -> PENDING 후 승인
-        Order toPending = orderRepository.findById(created.getId()).orElseThrow();
-        toPending.transitionToPending();
-        orderRepository.save(toPending);
-
-        // when
-        orderService.handlePaymentApproved(created.getId());
-
-        // then
-        Order found = orderRepository.findById(created.getId()).orElseThrow();
-        assertThat(found.getStatus()).isEqualTo(OrderStatus.PAID);
-    }
-
-    @Test
-    @DisplayName("주문 취소 처리 시 상태가 CANCELED로 전이된다")
-    void cancelOrder_transitionToCanceled() {
-        // given
-        Member member = memberRepository.save(Member.builder()
-                .name("canceler")
-                .email("canceler@example.com")
-                .password("encoded")
-                .role(MemberRole.USER)
-                .build());
-        Order created = orderService.createOrder(member.getId(), 30_000L, null);
-
-        // when
-        // 현재 구현상 CREATED/PENDING에서 취소는 IDEMPOTENCY_CONFLICT를 던지도록 최소구현 되어 있으므로
-        // 정상 전이를 검증하기 위해 상태를 PAID로 올린 뒤 결제 취소 시나리오를 사용
-        Order toPending = orderRepository.findById(created.getId()).orElseThrow();
-        toPending.transitionToPending();
-        toPending.transitionToPaid();
-        orderRepository.save(toPending);
-
-        orderService.handlePaymentCanceled(created.getId());
-
-        // then
-        Order found = orderRepository.findById(created.getId()).orElseThrow();
-        assertThat(found.getStatus()).isEqualTo(OrderStatus.CANCELED);
     }
 }
 

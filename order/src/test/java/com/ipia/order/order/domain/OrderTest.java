@@ -50,85 +50,85 @@ class OrderTest {
     }
 
     @Test
-    @DisplayName("이미 결제된 주문에서 다시 결제 완료로 전이하면 예외가 발생한다")
-    void transitionToPaidFromAlreadyPaidOrder() {
+    @DisplayName("CONFIRMED 상태에서 다시 confirm() 시도하면 예외가 발생한다")
+    void confirmTwiceThrows() {
         // given
         Order order = Order.create(1L, 1000L);
-        order.transitionToPending(); // PENDING 상태로 전이
-        order.transitionToPaid(); // 이미 결제 완료 상태
+        order.confirm();
 
         // when & then
-        assertThatThrownBy(() -> order.transitionToPaid())
+        assertThatThrownBy(order::confirm)
                 .isInstanceOf(OrderHandler.class)
-                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
+                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_ORDER_STATE);
     }
 
     @Test
-    @DisplayName("이미 취소된 주문에서 결제 완료로 전이하면 예외가 발생한다")
-    void transitionToPaidFromCanceledOrder() {
+    @DisplayName("CREATED 상태에서 startFulfillment() 시도하면 예외가 발생한다")
+    void startFulfillmentFromCreatedThrows() {
         // given
         Order order = Order.create(1L, 1000L);
-        order.transitionToCanceled(); // 취소 상태
 
         // when & then
-        assertThatThrownBy(() -> order.transitionToPaid())
+        assertThatThrownBy(order::startFulfillment)
                 .isInstanceOf(OrderHandler.class)
-                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
+                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_ORDER_STATE);
     }
 
     @Test
-    @DisplayName("이미 완료된 주문에서 결제 완료로 전이하면 예외가 발생한다")
-    void transitionToPaidFromCompletedOrder() {
+    @DisplayName("DELIVERED 전 complete() 호출 시 예외가 발생한다")
+    void completeBeforeDeliveredThrows() {
         // given
         Order order = Order.create(1L, 1000L);
-        order.transitionToPending(); // PENDING 상태로 전이
-        order.transitionToPaid();
-        order.transitionToCompleted(); // 완료 상태
+        order.confirm();
+        order.startFulfillment();
+        order.ship();
 
         // when & then
-        assertThatThrownBy(() -> order.transitionToPaid())
+        assertThatThrownBy(order::complete)
                 .isInstanceOf(OrderHandler.class)
-                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
+                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
     }
 
     @Test
-    @DisplayName("이미 취소된 주문에서 다시 취소로 전이하면 예외가 발생한다")
-    void transitionToCanceledFromAlreadyCanceledOrder() {
+    @DisplayName("SHIPPED 상태에서 requestCancel() 시 예외가 발생한다")
+    void requestCancelFromShippedThrows() {
         // given
         Order order = Order.create(1L, 1000L);
-        order.transitionToCanceled(); // 이미 취소 상태
+        order.confirm();
+        order.startFulfillment();
+        order.ship();
 
         // when & then
-        assertThatThrownBy(() -> order.transitionToCanceled())
-                .isInstanceOf(OrderHandler.class)
-                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
-    }
-
-    @Test
-    @DisplayName("이미 완료된 주문에서 취소로 전이하면 예외가 발생한다")
-    void transitionToCanceledFromCompletedOrder() {
-        // given
-        Order order = Order.create(1L, 1000L);
-        order.transitionToPending(); // PENDING 상태로 전이
-        order.transitionToPaid();
-        order.transitionToCompleted(); // 완료 상태
-
-        // when & then
-        assertThatThrownBy(() -> order.transitionToCanceled())
+        assertThatThrownBy(order::requestCancel)
                 .isInstanceOf(OrderHandler.class)
                 .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
     }
 
     @Test
-    @DisplayName("이미 결제된 주문에서 취소로 전이하면 예외가 발생한다")
-    void transitionToCanceledFromPaidOrder() {
+    @DisplayName("SHIPPED 상태에서 cancel() 시 예외가 발생한다")
+    void cancelFromShippedThrows() {
         // given
         Order order = Order.create(1L, 1000L);
-        order.transitionToPending(); // PENDING 상태로 전이
-        order.transitionToPaid(); // 결제 완료 상태
+        order.confirm();
+        order.startFulfillment();
+        order.ship();
 
         // when & then
-        assertThatThrownBy(() -> order.transitionToCanceled())
+        assertThatThrownBy(order::cancel)
+                .isInstanceOf(OrderHandler.class)
+                .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
+    }
+
+    @Test
+    @DisplayName("이미 취소 완료된 주문에서 cancel() 재호출 시 예외가 발생한다")
+    void cancelTwiceThrows() {
+        // given
+        Order order = Order.create(1L, 1000L);
+        order.requestCancel();
+        order.cancel();
+
+        // when & then
+        assertThatThrownBy(order::cancel)
                 .isInstanceOf(OrderHandler.class)
                 .hasFieldOrPropertyWithValue("status", OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
     }

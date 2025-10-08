@@ -1,30 +1,30 @@
 package com.ipia.order.idempotency;
 
+import java.time.Instant;
+import java.util.Map;
+import java.util.function.Supplier;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.BDDMockito.given;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.common.exception.idempotency.IdempotencyHandler;
 import com.ipia.order.common.exception.idempotency.status.IdempotencyErrorStatus;
 import com.ipia.order.idempotency.domain.IdempotencyKey;
 import com.ipia.order.idempotency.repository.IdempotencyKeyRepository;
 import com.ipia.order.idempotency.service.IdempotencyKeyService;
 import com.ipia.order.idempotency.service.IdempotencyKeyServiceImpl;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.BeforeEach;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.Mock;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
-import java.util.Map;
-import java.util.function.Supplier;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.HashOperations;
-
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("IdempotencyKeyService 실패 케이스")
@@ -82,6 +82,9 @@ class IdempotencyKeyServiceTest {
             // Redis Mock 설정: 캐시 미스 시나리오
             given(hashOperations.get(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("status"))).willReturn(null);
             given(valueOperations.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).willReturn(true);
+            // Repository Mock: save 성공 반환
+            given(repository.save(org.mockito.ArgumentMatchers.any(IdempotencyKey.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
             
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "ok");
             @SuppressWarnings({"unchecked", "rawtypes"})
@@ -95,6 +98,9 @@ class IdempotencyKeyServiceTest {
             // Redis Mock 설정: 캐시 미스 시나리오
             given(hashOperations.get(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("status"))).willReturn(null);
             given(valueOperations.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).willReturn(true);
+            // Repository Mock: save 성공 반환
+            given(repository.save(org.mockito.ArgumentMatchers.any(IdempotencyKey.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
             
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("v", 1);
             org.assertj.core.api.Assertions.assertThatCode(() -> {
