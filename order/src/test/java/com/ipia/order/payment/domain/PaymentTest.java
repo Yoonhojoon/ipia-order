@@ -91,7 +91,7 @@ class PaymentTest {
             // when & then
             assertThatThrownBy(() -> payment.approve(differentAmount))
                 .isInstanceOf(PaymentHandler.class)
-                .hasMessageContaining("결제 금액이 주문 총액과 일치하지 않습니다");
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_AMOUNT_MISMATCH);
         }
 
         @Test
@@ -104,7 +104,7 @@ class PaymentTest {
             // when & then
             assertThatThrownBy(() -> payment.approve(ORDER_TOTAL_AMOUNT))
                 .isInstanceOf(PaymentHandler.class)
-                .hasMessageContaining("결제 승인은 PENDING 상태에서만 가능합니다");
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
         }
 
         @Test
@@ -118,7 +118,7 @@ class PaymentTest {
             // when & then
             assertThatThrownBy(() -> payment.approve(ORDER_TOTAL_AMOUNT))
                 .isInstanceOf(PaymentHandler.class)
-                .hasMessageContaining("결제 승인은 PENDING 상태에서만 가능합니다");
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
         }
 
         @Test
@@ -133,7 +133,7 @@ class PaymentTest {
             // when & then
             assertThatThrownBy(() -> payment.approve(ORDER_TOTAL_AMOUNT))
                 .isInstanceOf(PaymentHandler.class)
-                .hasMessageContaining("결제 승인은 PENDING 상태에서만 가능합니다");
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
         }
     }
 
@@ -170,8 +170,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.cancel(BigDecimal.ZERO, "고객 요청"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("취소 금액은 0보다 커야 합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.INVALID_CANCEL_AMOUNT);
         }
 
         @Test
@@ -184,8 +184,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.cancel(exceedAmount, "고객 요청"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("취소 금액이 결제 금액을 초과할 수 없습니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.CANCEL_AMOUNT_EXCEEDED);
         }
 
         @Test
@@ -196,8 +196,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.cancel(PAYMENT_AMOUNT, "고객 요청"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("결제 취소는 APPROVED 상태에서만 가능합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_CANCEL);
         }
 
         @Test
@@ -210,8 +210,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.cancel(PAYMENT_AMOUNT, "고객 요청"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("결제 취소는 APPROVED 상태에서만 가능합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_CANCEL);
         }
 
         @Test
@@ -225,8 +225,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.cancel(PAYMENT_AMOUNT, "고객 요청"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("결제 취소는 APPROVED 상태에서만 가능합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_CANCEL);
         }
     }
 
@@ -265,8 +265,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.refund(BigDecimal.ZERO, "환불 요청"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("환불 금액은 0보다 커야 합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.INVALID_REFUND_AMOUNT);
         }
 
         @Test
@@ -280,8 +280,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.refund(exceedAmount, "환불 요청"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("환불 금액이 취소 금액을 초과할 수 없습니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.REFUND_AMOUNT_EXCEEDED);
         }
 
         @Test
@@ -292,8 +292,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.refund(PAYMENT_AMOUNT, "환불 요청"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("결제 환불은 CANCELED 상태에서만 가능합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_REFUND);
         }
 
         @Test
@@ -305,8 +305,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.refund(PAYMENT_AMOUNT, "환불 요청"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("결제 환불은 CANCELED 상태에서만 가능합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_REFUND);
         }
 
         @Test
@@ -320,8 +320,8 @@ class PaymentTest {
 
             // when & then
             assertThatThrownBy(() -> payment.refund(PAYMENT_AMOUNT, "환불 요청"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("결제 환불은 CANCELED 상태에서만 가능합니다");
+                .isInstanceOf(PaymentHandler.class)
+                .hasFieldOrPropertyWithValue("status", PaymentErrorStatus.PAYMENT_CANNOT_REFUND);
         }
     }
 

@@ -124,7 +124,20 @@ public class Payment {
      * @throws PaymentHandler 현재 상태에서 승인 불가능한 경우 또는 결제 금액 불일치
      */
     public void approve(BigDecimal orderTotalAmount) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // 상태 검증
+        if (!status.canApprove()) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
+        }
+
+        // 금액 검증
+        if (paidAmount == null || paidAmount.compareTo(orderTotalAmount) != 0) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_MISMATCH);
+        }
+
+        // 상태 전이
+        this.status = PaymentStatus.APPROVED;
+        this.approvedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -135,7 +148,25 @@ public class Payment {
      * @throws PaymentHandler 현재 상태에서 취소 불가능한 경우 또는 취소 금액 초과
      */
     public void cancel(BigDecimal cancelAmount, String reason) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // 상태 검증
+        if (!status.canCancel()) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_CANCEL);
+        }
+
+        // 금액 검증
+        if (cancelAmount == null || cancelAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentHandler(PaymentErrorStatus.INVALID_CANCEL_AMOUNT);
+        }
+
+        if (cancelAmount.compareTo(paidAmount) > 0) {
+            throw new PaymentHandler(PaymentErrorStatus.CANCEL_AMOUNT_EXCEEDED);
+        }
+
+        // 상태 전이
+        this.status = PaymentStatus.CANCELED;
+        this.canceledAmount = cancelAmount;
+        this.canceledAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -146,7 +177,25 @@ public class Payment {
      * @throws PaymentHandler 현재 상태에서 환불 불가능한 경우 또는 환불 금액 초과
      */
     public void refund(BigDecimal refundAmount, String reason) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // 상태 검증
+        if (!status.canRefund()) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_REFUND);
+        }
+
+        // 금액 검증
+        if (refundAmount == null || refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentHandler(PaymentErrorStatus.INVALID_REFUND_AMOUNT);
+        }
+
+        if (refundAmount.compareTo(canceledAmount) > 0) {
+            throw new PaymentHandler(PaymentErrorStatus.REFUND_AMOUNT_EXCEEDED);
+        }
+
+        // 상태 전이
+        this.status = PaymentStatus.REFUNDED;
+        this.refundedAmount = refundAmount;
+        this.refundedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
