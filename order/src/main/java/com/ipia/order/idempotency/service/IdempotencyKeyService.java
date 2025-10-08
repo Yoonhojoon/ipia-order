@@ -15,10 +15,11 @@ public interface IdempotencyKeyService {
      *
      * @param endpoint 엔드포인트 식별자(예: "POST /api/orders")
      * @param key 멱등성 키
+     * @param responseType 응답 타입 클래스 (역직렬화용)
      * @param operation 실제 수행할 연산
      * @return 연산 결과
      */
-    <T> T executeWithIdempotency(String endpoint, String key, Supplier<T> operation);
+    <T> T executeWithIdempotency(String endpoint, String key, Class<T> responseType, Supplier<T> operation);
 
     /**
      * 멱등성 키 엔트리를 조회합니다.

@@ -11,8 +11,11 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.time.Duration;
@@ -45,20 +48,20 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
 
     @Override
     @Transactional
-    public <T> T executeWithIdempotency(String endpoint, String key, Supplier<T> operation) {
+    public <T> T executeWithIdempotency(String endpoint, String key, Class<T> responseType, Supplier<T> operation) {
         validateKey(key);
 
         // 1) Redis 해시 우선 조회 (COMPLETED 응답 재활용)
         String dataKey = buildDataKey(endpoint, key);
         Optional<String> cachedResponse = readCompletedResponseFromRedis(dataKey);
         if (cachedResponse.isPresent()) {
-            return deserialize(cachedResponse.get());
+            return deserialize(cachedResponse.get(), responseType);
         }
 
         // 2) DB 조회 (기존 JPA 저장소)
         Optional<IdempotencyKey> existing = findByIdempotencyKey(endpoint, key);
         if (existing.isPresent()) {
-            return deserialize(existing.get().getResponseJson());
+            return deserialize(existing.get().getResponseJson(), responseType);
         }
 
         // Redis를 사용할 수 있으면 예약(PENDING) 락을 시도
@@ -68,11 +71,11 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
             // 이미 처리 중이거나 직후 완료된 경우: 재조회하여 완료 응답이 있으면 재사용, 없으면 충돌 반환
             Optional<String> againFromRedis = readCompletedResponseFromRedis(dataKey);
             if (againFromRedis.isPresent()) {
-                return deserialize(againFromRedis.get());
+                return deserialize(againFromRedis.get(), responseType);
             }
             Optional<IdempotencyKey> after = findByIdempotencyKey(endpoint, key);
             if (after.isPresent()) {
-                return deserialize(after.get().getResponseJson());
+                return deserialize(after.get().getResponseJson(), responseType);
             }
             throw new IdempotencyHandler(IdempotencyErrorStatus.CONCURRENT_CONFLICT);
         }
@@ -81,7 +84,20 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
             T result = operation.get();
             String responseJson = serialize(result);
             saveIdempotencyKey(endpoint, key, responseJson);
-            writeCompletedToRedis(dataKey, responseJson);
+            
+            // 트랜잭션 커밋 후에만 Redis에 기록하여 정합성 보장
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        writeCompletedToRedis(dataKey, responseJson);
+                    }
+                });
+            } else {
+                // 방어적 처리: 트랜잭션 동기화가 없으면 즉시 기록
+                writeCompletedToRedis(dataKey, responseJson);
+            }
+            
             return result;
         } finally {
             // 락 해제: TTL이 있지만 완료 시 즉시 해제 시도
@@ -110,6 +126,14 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
         try {
             IdempotencyKey entity = new IdempotencyKey(endpoint, key, responseJson, Instant.now());
             return repository.save(entity);
+        } catch (DataIntegrityViolationException e) {
+            // 중복 키 제약 조건 위반 시 기존 엔티티 조회하여 반환
+            Optional<IdempotencyKey> existing = repository.findByEndpointAndKey(endpoint, key);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+            // 기존 엔티티가 없으면 예외를 재발생 (예상치 못한 상황)
+            throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         } catch (RuntimeException e) {
             throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         }
@@ -195,11 +219,9 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private <T> T deserialize(String json) {
+    private <T> T deserialize(String json, Class<T> type) {
         try {
-            // 일반화된 역직렬화: Object로 읽고 그대로 반환
-            return (T) objectMapper.readValue(json, Object.class);
+            return objectMapper.readValue(json, type);
         } catch (JsonProcessingException e) {
             throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         }

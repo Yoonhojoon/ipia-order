@@ -65,9 +65,9 @@ class OrderServiceImplTest {
         validOrder = Order.createTestOrder(1L, 1L, 10000L, OrderStatus.CREATED);
 
         // 기본 동작: 멱등 키가 주어지면 공급자(operation)를 실행해 결과를 반환
-        lenient().when(idempotencyKeyService.executeWithIdempotency(anyString(), anyString(), any()))
+        lenient().when(idempotencyKeyService.executeWithIdempotency(anyString(), anyString(), any(Class.class), any()))
                 .thenAnswer(invocation -> {
-                    java.util.function.Supplier<?> op = invocation.getArgument(2);
+                    java.util.function.Supplier<?> op = invocation.getArgument(3);
                     return op.get();
                 });
     }
@@ -167,7 +167,7 @@ class OrderServiceImplTest {
                     .willReturn(Optional.of(validMember));
             
             // 멱등 서비스가 중복 키 충돌을 유발하도록 설정
-            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(duplicateKey), any()))
+            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(duplicateKey), any(Class.class), any()))
                     .willThrow(new OrderHandler(OrderErrorStatus.IDEMPOTENCY_CONFLICT));
 
             // when & then
@@ -553,7 +553,7 @@ class OrderServiceImplTest {
                     .willReturn(savedOrder);
 
             // 멱등 서비스가 공급자를 실행하도록 설정(명시)
-            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(idempotencyKey), any()))
+            given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(idempotencyKey), any(Class.class), any()))
                     .willAnswer(invocation -> {
                         java.util.function.Supplier<Order> op = invocation.getArgument(2);
                         return op.get();

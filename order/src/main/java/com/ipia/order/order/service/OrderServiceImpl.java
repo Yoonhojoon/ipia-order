@@ -62,7 +62,7 @@ public class OrderServiceImpl implements OrderService {
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
             return operation.get();
         }
-        return idempotencyKeyService.executeWithIdempotency(CREATE_ORDER_ENDPOINT, idempotencyKey, operation);
+        return idempotencyKeyService.executeWithIdempotency(CREATE_ORDER_ENDPOINT, idempotencyKey, Order.class, operation);
     }
 
     @Override

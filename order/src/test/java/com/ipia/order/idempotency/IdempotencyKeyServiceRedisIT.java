@@ -55,7 +55,11 @@ class IdempotencyKeyServiceRedisIT {
         String key = UUID.randomUUID().toString();
 
         for (int i = 0; i < threads; i++) {
-            tasks.add(() -> sut.executeWithIdempotency(ENDPOINT, key, () -> Map.of("ok", 1)));
+            tasks.add(() -> {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, key, Object.class, () -> Map.of("ok", 1));
+                return result;
+            });
         }
 
         List<Future<Map<String,Object>>> futures = pool.invokeAll(tasks);

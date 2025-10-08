@@ -47,7 +47,7 @@ class IdempotencyKeyServiceTest {
         @DisplayName("잘못된 키 형식 시 IdempotencyHandler(INVALID_IDEMPOTENCY_KEY)")
         void invalidKey_throwsInvalidIdempotencyKeyException() {
             Supplier<String> op = () -> "ok";
-            assertThatThrownBy(() -> sut.executeWithIdempotency(ENDPOINT, " ", op))
+            assertThatThrownBy(() -> sut.executeWithIdempotency(ENDPOINT, " ", String.class, op))
                     .isInstanceOf(IdempotencyHandler.class)
                     .hasMessage(IdempotencyErrorStatus.INVALID_IDEMPOTENCY_KEY.getCode());
         }
@@ -63,7 +63,8 @@ class IdempotencyKeyServiceTest {
         @DisplayName("캐시 미스: operation(Map) 결과를 반환한다")
         void cacheMiss_returnsOperationResult() {
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "ok");
-            Map<String, Object> result = sut.executeWithIdempotency(ENDPOINT, "fresh-key", op);
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, "fresh-key", Object.class, op);
             assertThat(result.get("result")).isEqualTo("ok");
         }
 
@@ -71,7 +72,10 @@ class IdempotencyKeyServiceTest {
         @DisplayName("정상 키: 예외 없이 수행되고 Map 반환")
         void validKey_runsWithoutException() {
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("v", 1);
-            org.assertj.core.api.Assertions.assertThatCode(() -> sut.executeWithIdempotency(ENDPOINT, "valid", op))
+            org.assertj.core.api.Assertions.assertThatCode(() -> {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, "valid", Object.class, op);
+            })
                     .doesNotThrowAnyException();
         }
 
@@ -87,7 +91,10 @@ class IdempotencyKeyServiceTest {
             Supplier<Map<String, Object>> op = () -> java.util.Map.of("result", "should-not-run");
 
             // then: 현재 구현은 역직렬화 Object→Map 캐스트 가능, 정책에 맞추어 예외 없이 동작해야 함
-            org.assertj.core.api.Assertions.assertThatCode(() -> sut.executeWithIdempotency(ENDPOINT, key, op))
+            org.assertj.core.api.Assertions.assertThatCode(() -> {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                Map<String, Object> result = (Map<String, Object>) ((IdempotencyKeyService) sut).executeWithIdempotency(ENDPOINT, key, Object.class, op);
+            })
                     .doesNotThrowAnyException();
         }
     }
