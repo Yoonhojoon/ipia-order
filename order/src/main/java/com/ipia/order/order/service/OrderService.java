@@ -28,10 +28,10 @@ public interface OrderService {
      * @param totalAmount 주문 총액 (0보다 커야 함)
      * @param idempotencyKey 멱등성 키 (선택사항)
      * @return 생성된 주문
-     * @throws MemberNotFoundException 존재하지 않는 회원
-     * @throws InvalidAmountException 음수 또는 0원 주문 금액
-     * @throws InactiveMemberException 비활성 회원
-     * @throws IdempotencyConflictException 멱등 키 중복
+     * @throws OrderHandler 존재하지 않는 회원 (OrderErrorStatus.MEMBER_NOT_FOUND)
+     * @throws OrderHandler 음수 또는 0원 주문 금액 (OrderErrorStatus.INVALID_AMOUNT)
+     * @throws OrderHandler 비활성 회원 (OrderErrorStatus.INACTIVE_MEMBER)
+     * @throws OrderHandler 멱등 키 중복 (OrderErrorStatus.IDEMPOTENCY_CONFLICT)
      */
     Order createOrder(long memberId, long totalAmount, @Nullable String idempotencyKey);
     
@@ -40,8 +40,8 @@ public interface OrderService {
      * 
      * @param orderId 주문 ID
      * @return 주문 정보 (없으면 Optional.empty())
-     * @throws OrderNotFoundException 존재하지 않는 주문
-     * @throws AccessDeniedException 권한 없는 주문 조회
+     * @throws OrderHandler 존재하지 않는 주문 (OrderErrorStatus.ORDER_NOT_FOUND)
+     * @throws OrderHandler 권한 없는 주문 조회 (OrderErrorStatus.ACCESS_DENIED)
      */
     Optional<Order> getOrder(long orderId);
     
@@ -53,8 +53,8 @@ public interface OrderService {
      * @param page 페이지 번호 (0부터 시작)
      * @param size 페이지 크기
      * @return 주문 목록 응답 DTO
-     * @throws InvalidFilterException 잘못된 필터 조건
-     * @throws InvalidPaginationException 잘못된 페이지네이션 파라미터
+     * @throws OrderHandler 잘못된 필터 조건 (OrderErrorStatus.INVALID_FILTER)
+     * @throws OrderHandler 잘못된 페이지네이션 파라미터 (OrderErrorStatus.INVALID_PAGINATION)
      */
     OrderListResponse listOrders(@Nullable Long memberId, @Nullable String status, int page, int size);
     
@@ -64,10 +64,10 @@ public interface OrderService {
      * @param orderId 주문 ID
      * @param reason 취소 사유 (선택사항)
      * @return 취소된 주문
-     * @throws OrderNotFoundException 존재하지 않는 주문
-     * @throws InvalidOrderStateException 잘못된 상태에서 취소 시도
-     * @throws AlreadyCanceledException 이미 취소된 주문
-     * @throws IdempotencyConflictException 멱등 키 중복
+     * @throws OrderHandler 존재하지 않는 주문 (OrderErrorStatus.ORDER_NOT_FOUND)
+     * @throws OrderHandler 잘못된 상태에서 취소 시도 (OrderErrorStatus.INVALID_ORDER_STATE)
+     * @throws OrderHandler 이미 취소된 주문 (OrderErrorStatus.ALREADY_CANCELED)
+     * @throws OrderHandler 멱등 키 중복 (OrderErrorStatus.IDEMPOTENCY_CONFLICT)
      */
     Order cancelOrder(long orderId, @Nullable String reason);
     
@@ -75,9 +75,9 @@ public interface OrderService {
      * 결제 승인 이벤트 핸들링
      * 
      * @param orderId 주문 ID
-     * @throws OrderNotFoundException 존재하지 않는 주문
-     * @throws InvalidOrderStateException 잘못된 상태에서 승인 시도
-     * @throws DuplicateApprovalException 중복 승인 시도
+     * @throws OrderHandler 존재하지 않는 주문 (OrderErrorStatus.ORDER_NOT_FOUND)
+     * @throws OrderHandler 잘못된 상태에서 승인 시도 (OrderErrorStatus.INVALID_ORDER_STATE)
+     * @throws OrderHandler 중복 승인 시도 (OrderErrorStatus.DUPLICATE_APPROVAL)
      */
     void handlePaymentApproved(long orderId);
     
@@ -85,8 +85,8 @@ public interface OrderService {
      * 결제 취소 이벤트 핸들링
      * 
      * @param orderId 주문 ID
-     * @throws OrderNotFoundException 존재하지 않는 주문
-     * @throws InvalidOrderStateException 잘못된 상태에서 취소 시도
+     * @throws OrderHandler 존재하지 않는 주문 (OrderErrorStatus.ORDER_NOT_FOUND)
+     * @throws OrderHandler 잘못된 상태에서 취소 시도 (OrderErrorStatus.INVALID_ORDER_STATE)
      */
     void handlePaymentCanceled(long orderId);
 }
