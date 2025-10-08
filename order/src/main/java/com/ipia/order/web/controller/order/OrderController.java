@@ -3,6 +3,7 @@ package com.ipia.order.web.controller.order;
 import com.ipia.order.common.exception.ApiErrorCodeExample;
 import com.ipia.order.common.exception.ApiErrorCodeExamples;
 import com.ipia.order.common.exception.ApiResponse;
+import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
 import com.ipia.order.common.exception.order.status.OrderSuccessStatus;
 import com.ipia.order.order.domain.Order;
@@ -22,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Optional;
 
 /**
  * 주문 관리 컨트롤러
@@ -53,8 +54,15 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @Valid @RequestBody CreateOrderRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("Not implemented yet");
+        
+        Order order = orderService.createOrder(
+            request.getMemberId(), 
+            request.getTotalAmount(), 
+            idempotencyKey
+        );
+        
+        OrderResponse response = OrderResponse.from(order);
+        return ApiResponse.onSuccess(OrderSuccessStatus.ORDER_CREATED, response);
     }
 
     /**
@@ -74,8 +82,15 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
             @Parameter(description = "주문 ID", example = "1") @PathVariable("id") Long id) {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("Not implemented yet");
+        
+        Optional<Order> orderOptional = orderService.getOrder(id);
+        
+        if (orderOptional.isEmpty()) {
+            throw new OrderHandler(OrderErrorStatus.ORDER_NOT_FOUND);
+        }
+        
+        OrderResponse response = OrderResponse.from(orderOptional.get());
+        return ApiResponse.onSuccess(OrderSuccessStatus.ORDER_FOUND, response);
     }
 
     /**
@@ -97,8 +112,9 @@ public class OrderController {
             @Parameter(description = "주문 상태", example = "PENDING") @RequestParam(value = "status", required = false) String status,
             @Parameter(description = "페이지 번호", example = "0") @RequestParam(value = "page", defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "10") @RequestParam(value = "size", defaultValue = "10") int size) {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("Not implemented yet");
+        
+        OrderListResponse response = orderService.listOrders(memberId, status, page, size);
+        return ApiResponse.onSuccess(OrderSuccessStatus.ORDERS_FOUND, response);
     }
 
     /**
@@ -121,7 +137,10 @@ public class OrderController {
             @Parameter(description = "주문 ID", example = "1") @PathVariable("id") Long id,
             @Valid @RequestBody CancelOrderRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-        // TODO: 구현 예정
-        throw new UnsupportedOperationException("Not implemented yet");
+        
+        Order order = orderService.cancelOrder(id, request.getReason());
+        
+        OrderResponse response = OrderResponse.from(order);
+        return ApiResponse.onSuccess(OrderSuccessStatus.ORDER_CANCELED, response);
     }
 }

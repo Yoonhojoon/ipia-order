@@ -44,7 +44,11 @@ public class SecurityConfig {
                 // 공개 엔드포인트
                 .requestMatchers(
                     "/api/auth/login",
-                    "/api/auth/signup",
+                    "/api/auth/register",
+                    // Swagger UI & OpenAPI 문서 경로 허용
+                    "/v3/api-docs/**",
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
                     "/h2-console/**",
                     "/actuator/**"
                 ).permitAll()

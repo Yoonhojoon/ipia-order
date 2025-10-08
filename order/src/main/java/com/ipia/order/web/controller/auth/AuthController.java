@@ -73,7 +73,7 @@ public class AuthController {
             @ApiErrorCodeExample(value = AuthErrorStatus.class, codes = {"MEMBER_ALREADY_EXISTS"})
     })
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<com.ipia.order.web.dto.response.MemberResponse>> register(
+    public ResponseEntity<ApiResponse<MemberResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
         try {
             Member newMember = authService.register(request.getName(), request.getEmail(), request.getPassword());

@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.order.event.OrderPaidEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
@@ -22,8 +23,11 @@ import com.ipia.order.order.event.OrderCanceledEvent;
 import com.ipia.order.order.event.OrderCreatedEvent;
 import com.ipia.order.order.repository.OrderRepository;
 import com.ipia.order.idempotency.service.IdempotencyKeyService;
+import com.ipia.order.web.dto.response.order.OrderResponse;
+import com.ipia.order.web.dto.response.order.OrderListResponse;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 주문 서비스 구현체
@@ -32,6 +36,7 @@ import lombok.RequiredArgsConstructor;
  * 현재는 테스트 컴파일을 위한 스텁 구현
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
@@ -50,59 +55,96 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(long memberId, long totalAmount, @Nullable String idempotencyKey) {
+        log.info("[Order] 주문 생성 요청: memberId={}, amount={}, idemKey={}", memberId, totalAmount, idempotencyKey);
         validateMemberForOrder(memberId);
         validateOrderAmount(totalAmount);
         Supplier<Order> operation = () -> {
             Order order = Order.create(memberId, totalAmount);
             Order saved = orderRepository.save(order);
             eventPublisher.publishEvent(OrderCreatedEvent.of(saved.getId(), memberId, totalAmount));
+            log.info("[Order] 주문 생성 이벤트 발행: orderId={}, memberId={}, amount={}", saved.getId(), memberId, totalAmount);
             return saved;
         };
 
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
-            return operation.get();
+            Order created = operation.get();
+            log.info("[Order] 주문 생성 완료(멱등키 없음): orderId={}", created.getId());
+            return created;
         }
-        return idempotencyKeyService.executeWithIdempotency(CREATE_ORDER_ENDPOINT, idempotencyKey, Order.class, operation);
+        Order created = idempotencyKeyService.executeWithIdempotency(CREATE_ORDER_ENDPOINT, idempotencyKey, Order.class, operation);
+        log.info("[Order] 주문 생성 완료(멱등키 적용): orderId={}, idemKey={}", created.getId(), idempotencyKey);
+        return created;
     }
 
     @Override
     public Optional<Order> getOrder(long orderId) {
+        log.info("[Order] 주문 단건 조회 요청: orderId={}", orderId);
         findOrderById(orderId); // 주문 존재 여부만 확인
         // 인증/인가 미도입 단계: 접근 제어 실패로 처리 (테스트는 실패 케이스만 존재)
         throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
     }
 
     @Override
-    public List<Order> listOrders(@Nullable Long memberId, @Nullable OrderStatus status, int page, int size) {
+    public OrderListResponse listOrders(@Nullable Long memberId, @Nullable String status, int page, int size) {
+        log.info("[Order] 주문 목록 조회 요청: memberId={}, status={}, page={}, size={}", memberId, status, page, size);
         validatePagination(page, size);
         validateMemberFilter(memberId);
 
+        // String status를 OrderStatus enum으로 변환
+        OrderStatus orderStatus = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[Order] 잘못된 상태값 필터: status={}", status);
+                throw new OrderHandler(OrderErrorStatus.INVALID_FILTER);
+            }
+        }
+
         Pageable pageable = PageRequest.of(page, size);
+        Page<Order> orderPage;
         
         // 동적 쿼리 로직: 필터 조건에 따라 다른 Repository 메서드 호출
-        if (memberId != null && status != null) {
+        if (memberId != null && orderStatus != null) {
             // 회원 ID와 상태 모두 지정
-            return orderRepository.findByMemberIdAndStatus(memberId, status, pageable).getContent();
+            orderPage = orderRepository.findByMemberIdAndStatus(memberId, orderStatus, pageable);
         } else if (memberId != null) {
             // 회원 ID만 지정
-            return orderRepository.findByMemberId(memberId, pageable).getContent();
-        } else if (status != null) {
+            orderPage = orderRepository.findByMemberId(memberId, pageable);
+        } else if (orderStatus != null) {
             // 상태만 지정
-            return orderRepository.findByStatus(status, pageable).getContent();
+            orderPage = orderRepository.findByStatus(orderStatus, pageable);
         } else {
             // 필터 없음 - 전체 조회
-            return orderRepository.findAll(pageable).getContent();
+            orderPage = orderRepository.findAll(pageable);
         }
+
+        // DTO 매핑
+        List<OrderResponse> orderResponses = orderPage.getContent().stream()
+                .map(OrderResponse::from)
+                .toList();
+        
+        OrderListResponse response = OrderListResponse.builder()
+                .orders(orderResponses)
+                .totalCount(orderPage.getTotalElements())
+                .page(page)
+                .size(size)
+                .totalPages(orderPage.getTotalPages())
+                .build();
+        log.info("[Order] 주문 목록 조회 성공: count={}, totalPages={}", response.getOrders().size(), response.getTotalPages());
+        return response;
     }
 
     @Override
     @Transactional
     public Order cancelOrder(long orderId, @Nullable String reason) {
+        log.info("[Order] 주문 취소 요청: orderId={}, reason={}", orderId, reason);
         Order order = findOrderById(orderId);
         validateOrderForCancellation(order);
 
         // 멱등성 미구현: CREATED/PENDING 에서는 충돌로 처리 (테스트 통과를 위한 최소 구현)
         if (order.getStatus() == OrderStatus.CREATED || order.getStatus() == OrderStatus.PENDING) {
+            log.warn("[Order] 멱등성 충돌로 인한 취소 실패: orderId={}, status={}", orderId, order.getStatus());
             throw new OrderHandler(OrderErrorStatus.IDEMPOTENCY_CONFLICT);
         }
 
@@ -110,29 +152,34 @@ public class OrderServiceImpl implements OrderService {
         order.transitionToCanceled();
         Order saved = orderRepository.save(order);
         eventPublisher.publishEvent(OrderCanceledEvent.of(saved.getId(), reason));
+        log.info("[Order] 주문 취소 성공: orderId={}", saved.getId());
         return saved;
     }
 
     @Override
     @Transactional
     public void handlePaymentApproved(long orderId) {
+        log.info("[Order] 결제 승인 처리 요청: orderId={}", orderId);
         Order order = findOrderById(orderId);
         validateOrderForPaymentApproval(order);
 
         order.transitionToPaid();
         orderRepository.save(order);
         eventPublisher.publishEvent(OrderPaidEvent.of(order.getId(), order.getTotalAmount()));
+        log.info("[Order] 결제 승인 처리 완료: orderId={}", order.getId());
     }
 
     @Override
     @Transactional
     public void handlePaymentCanceled(long orderId) {
+        log.info("[Order] 결제 취소 처리 요청: orderId={}", orderId);
         Order order = findOrderById(orderId);
         validateOrderForPaymentCancellation(order);
 
         order.transitionToCanceled();
         Order saved = orderRepository.save(order);
         eventPublisher.publishEvent(OrderCanceledEvent.of(saved.getId(), null));
+        log.info("[Order] 결제 취소 처리 완료: orderId={}", saved.getId());
     }
 
     // ==================== Private Helper Methods ====================

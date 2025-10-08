@@ -3,11 +3,14 @@ package com.ipia.order.web.controller.order;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
+import com.ipia.order.common.util.JwtUtil;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
 import com.ipia.order.order.service.OrderService;
 import com.ipia.order.web.dto.request.order.CancelOrderRequest;
 import com.ipia.order.web.dto.request.order.CreateOrderRequest;
+import com.ipia.order.web.dto.response.order.OrderResponse;
+import com.ipia.order.web.dto.response.order.OrderListResponse;
 import org.mockito.Mockito;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +42,9 @@ class OrderControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
     private OrderService orderService;
 
     @BeforeEach
@@ -48,11 +54,11 @@ class OrderControllerTest {
         Order mockOrder2 = createMockOrder(2L, 1L, 20000L, OrderStatus.PENDING);
         
         // 주문 생성 Mock
-        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(10000L), Mockito.anyString()))
+        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(10000L), Mockito.any()))
                 .thenReturn(mockOrder);
-        Mockito.when(orderService.createOrder(Mockito.eq(999L), Mockito.eq(10000L), Mockito.anyString()))
+        Mockito.when(orderService.createOrder(Mockito.eq(999L), Mockito.eq(10000L), Mockito.any()))
                 .thenThrow(new OrderHandler(OrderErrorStatus.MEMBER_NOT_FOUND));
-        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(-1000L), Mockito.anyString()))
+        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(-1000L), Mockito.any()))
                 .thenThrow(new OrderHandler(OrderErrorStatus.INVALID_AMOUNT));
 
         // 주문 조회 Mock
@@ -60,16 +66,32 @@ class OrderControllerTest {
         Mockito.when(orderService.getOrder(Mockito.eq(999L))).thenReturn(Optional.empty());
 
         // 주문 목록 조회 Mock
+        OrderListResponse listResponse1 = OrderListResponse.builder()
+                .orders(List.of(OrderResponse.from(mockOrder), OrderResponse.from(mockOrder2)))
+                .totalCount(2)
+                .page(0)
+                .size(10)
+                .totalPages(1)
+                .build();
+        
+        OrderListResponse listResponse2 = OrderListResponse.builder()
+                .orders(List.of(OrderResponse.from(mockOrder2)))
+                .totalCount(1)
+                .page(0)
+                .size(10)
+                .totalPages(1)
+                .build();
+        
         Mockito.when(orderService.listOrders(Mockito.eq(1L), Mockito.isNull(), Mockito.eq(0), Mockito.eq(10)))
-                .thenReturn(List.of(mockOrder, mockOrder2));
-        Mockito.when(orderService.listOrders(Mockito.isNull(), Mockito.eq(OrderStatus.PENDING), Mockito.eq(0), Mockito.eq(10)))
-                .thenReturn(List.of(mockOrder2));
+                .thenReturn(listResponse1);
+        Mockito.when(orderService.listOrders(Mockito.isNull(), Mockito.eq("PENDING"), Mockito.eq(0), Mockito.eq(10)))
+                .thenReturn(listResponse2);
 
         // 주문 취소 Mock
         Order canceledOrder = createMockOrder(1L, 1L, 10000L, OrderStatus.CANCELED);
-        Mockito.when(orderService.cancelOrder(Mockito.eq(1L), Mockito.anyString()))
+        Mockito.when(orderService.cancelOrder(Mockito.eq(1L), Mockito.any()))
                 .thenReturn(canceledOrder);
-        Mockito.when(orderService.cancelOrder(Mockito.eq(999L), Mockito.anyString()))
+        Mockito.when(orderService.cancelOrder(Mockito.eq(999L), Mockito.any()))
                 .thenThrow(new OrderHandler(OrderErrorStatus.ORDER_NOT_FOUND));
     }
 

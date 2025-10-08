@@ -13,26 +13,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.beans.factory.annotation.Value;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.Map;
+import java.util.concurrent.locks.LockSupport;
+import com.ipia.order.idempotency.support.IdempotencyReplayContext;
+import com.ipia.order.idempotency.support.IdempotencyReplayContextHolder;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
 
-    private static final Logger log = LoggerFactory.getLogger(IdempotencyKeyServiceImpl.class);
     private static final String CACHE_NAME = "idemp";
     private static final String REDIS_NAMESPACE = "idemp:";
     private static final String REDIS_LOCK_NAMESPACE = "idemp:lock:";
@@ -74,17 +74,23 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     @Transactional
     public <T> T executeWithIdempotency(String endpoint, String key, Class<T> responseType, Supplier<T> operation) {
         validateKey(key);
+        log.info("[Idemp] 멱등 처리 요청: endpoint={}, key={}", endpoint, key);
 
         // 1) Redis 해시 우선 조회 (COMPLETED 응답 재활용)
         String dataKey = buildDataKey(endpoint, key);
         Optional<String> cachedResponse = readCompletedResponseFromRedis(dataKey);
         if (cachedResponse.isPresent()) {
+            IdempotencyReplayContextHolder.set(new IdempotencyReplayContext(key, true, "redis", null));
+            log.info("[Idemp] Redis 캐시 적중(완료 응답 재사용): dataKey={}", dataKey);
             return deserialize(cachedResponse.get(), responseType);
         }
 
         // 2) DB 조회 (기존 JPA 저장소)
         Optional<IdempotencyKey> existing = findByIdempotencyKey(endpoint, key);
         if (existing.isPresent()) {
+            Long recordedAt = existing.get().getCreatedAt() != null ? existing.get().getCreatedAt().toEpochMilli() : null;
+            IdempotencyReplayContextHolder.set(new IdempotencyReplayContext(key, true, "db", recordedAt));
+            log.info("[Idemp] DB 적중(완료 응답 재사용): endpoint={}, key={}", endpoint, key);
             return deserialize(existing.get().getResponseJson(), responseType);
         }
 
@@ -92,39 +98,48 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
         String lockKey = buildLockKey(endpoint, key);
         boolean acquired = tryAcquireReservation(lockKey);
         if (!acquired) {
+            log.warn("[Idemp] 예약 락 획득 실패(경합): lockKey={}", lockKey);
             // 이미 처리 중이거나 직후 완료된 경우: 재조회하여 완료 응답이 있으면 재사용, 없으면 충돌 반환
             Optional<String> againFromRedis = readCompletedResponseFromRedis(dataKey);
             if (againFromRedis.isPresent()) {
+                log.info("[Idemp] 재시도 중 Redis 적중: dataKey={}", dataKey);
                 return deserialize(againFromRedis.get(), responseType);
             }
             Optional<IdempotencyKey> after = findByIdempotencyKey(endpoint, key);
             if (after.isPresent()) {
+                log.info("[Idemp] 재시도 중 DB 적중: endpoint={}, key={}", endpoint, key);
                 return deserialize(after.get().getResponseJson(), responseType);
             }
             throw new IdempotencyHandler(IdempotencyErrorStatus.CONCURRENT_CONFLICT);
         }
 
         try {
+            log.info("[Idemp] 예약 락 획득 성공: lockKey={}", lockKey);
             T result = operation.get();
             String responseJson = serialize(result);
             saveIdempotencyKey(endpoint, key, responseJson);
+            IdempotencyReplayContextHolder.set(new IdempotencyReplayContext(key, false, "fresh", Instant.now().toEpochMilli()));
             
             // 트랜잭션 커밋 후에만 Redis에 기록하여 정합성 보장
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
+                        log.debug("[Idemp] 트랜잭션 커밋 후 Redis 기록: dataKey={}", dataKey);
                         writeCompletedToRedis(dataKey, responseJson);
                     }
                 });
             } else {
                 // 방어적 처리: 트랜잭션 동기화가 없으면 즉시 기록
+                log.debug("[Idemp] 즉시 Redis 기록(동기화 없음): dataKey={}", dataKey);
                 writeCompletedToRedis(dataKey, responseJson);
             }
             
+            log.info("[Idemp] 멱등 처리 완료: endpoint={}, key={}", endpoint, key);
             return result;
         } finally {
             // 락 해제: TTL이 있지만 완료 시 즉시 해제 시도
+            log.debug("[Idemp] 예약 락 해제 시도: lockKey={}", lockKey);
             releaseReservation(lockKey);
         }
     }
@@ -134,8 +149,10 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     public Optional<IdempotencyKey> findByIdempotencyKey(String endpoint, String key) {
         validateKey(key);
         try {
+            log.debug("[Idemp] DB 조회: endpoint={}, key={}", endpoint, key);
             return repository.findByEndpointAndKey(endpoint, key);
         } catch (RuntimeException e) {
+            log.warn("[Idemp] DB 조회 실패: endpoint={}, key={}", endpoint, key);
             throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         }
     }
@@ -148,17 +165,24 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
             throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         }
         try {
+            log.debug("[Idemp] DB 저장 시도: endpoint={}, key={}", endpoint, key);
             IdempotencyKey entity = new IdempotencyKey(endpoint, key, responseJson, Instant.now());
-            return repository.save(entity);
+            IdempotencyKey saved = repository.save(entity);
+            log.info("[Idemp] DB 저장 성공: id={}, endpoint={}, key={}", saved.getId(), endpoint, key);
+            return saved;
         } catch (DataIntegrityViolationException e) {
             // 중복 키 제약 조건 위반 시 기존 엔티티 조회하여 반환
+            log.warn("[Idemp] DB 저장 충돌(중복 키): endpoint={}, key={}", endpoint, key);
             Optional<IdempotencyKey> existing = repository.findByEndpointAndKey(endpoint, key);
             if (existing.isPresent()) {
+                log.info("[Idemp] 기존 엔티티 반환: id={}", existing.get().getId());
                 return existing.get();
             }
             // 기존 엔티티가 없으면 예외를 재발생 (예상치 못한 상황)
+            log.error("[Idemp] 중복 충돌 후 기존 엔티티 없음 - 불일치 상태");
             throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         } catch (RuntimeException e) {
+            log.warn("[Idemp] DB 저장 실패: endpoint={}, key={}", endpoint, key);
             throw new IdempotencyHandler(IdempotencyErrorStatus.REPOSITORY_ERROR);
         }
     }
@@ -188,7 +212,12 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
         while (attempts-- > 0) {
             Boolean ok = redisTemplate.opsForValue().setIfAbsent(lockKey, STATUS_PENDING, RESERVATION_TTL);
             if (Boolean.TRUE.equals(ok)) return true;
-            try { Thread.sleep(30); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            // 30ms 대기 (스레드 인터럽트 안전)
+            LockSupport.parkNanos(30L * 1_000_000L);
+            if (Thread.currentThread().isInterrupted()) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
         return false;
     }
@@ -210,6 +239,7 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
             }
             return Optional.empty();
         } catch (RuntimeException e) {
+            log.warn("[Idemp] Redis 조회 실패: dataKey={}", dataKey);
             return Optional.empty();
         }
     }
@@ -226,6 +256,7 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
             );
             redisTemplate.opsForHash().putAll(dataKey, map);
             redisTemplate.expire(dataKey, RESERVATION_TTL);
+            log.debug("[Idemp] Redis 기록 성공: dataKey={}, ttl={}s", dataKey, RESERVATION_TTL.toSeconds());
         } catch (RuntimeException ignored) {
             // 캐시 저장 실패는 기능 저하로 묵살 (DB에는 저장됨)
         }
