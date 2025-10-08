@@ -66,25 +66,51 @@ public class Order extends BaseEntity {
                 .build();
     }
 
-    public void transitionToPending() {
-        validateTransition(OrderStatus.CREATED, OrderErrorStatus.INVALID_TRANSITION_TO_PENDING);
-        this.status = OrderStatus.PENDING;
+    // ==================== 내부 상태 변환 메서드 ====================
+
+    public void confirm() {
+        validateTransition(OrderStatus.CREATED, OrderErrorStatus.INVALID_ORDER_STATE);
+        this.status = OrderStatus.CONFIRMED;
     }
 
-    public void transitionToPaid() {
-        validateTransition(OrderStatus.PENDING, OrderErrorStatus.INVALID_TRANSITION_TO_PAID);
-        this.status = OrderStatus.PAID;
+    public void startFulfillment() {
+        validateTransition(OrderStatus.CONFIRMED, OrderErrorStatus.INVALID_ORDER_STATE);
+        this.status = OrderStatus.FULFILLMENT_STARTED;
     }
 
-    public void transitionToCanceled() {
-        validateCancellation();
+    public void ship() {
+        validateTransition(OrderStatus.FULFILLMENT_STARTED, OrderErrorStatus.INVALID_ORDER_STATE);
+        this.status = OrderStatus.SHIPPED;
+    }
+
+    public void deliver() {
+        validateTransition(OrderStatus.SHIPPED, OrderErrorStatus.INVALID_ORDER_STATE);
+        this.status = OrderStatus.DELIVERED;
+    }
+
+    public void complete() {
+        // 완료는 DELIVERED 이후만 허용 (결제 미도입 단계 기준)
+        validateTransition(OrderStatus.DELIVERED, OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
+        this.status = OrderStatus.COMPLETED;
+    }
+
+    public void requestCancel() {
+        // 생성/확정 단계에서만 취소 요청 허용
+        if (!(this.status == OrderStatus.CREATED || this.status == OrderStatus.CONFIRMED)) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
+        }
+        this.status = OrderStatus.CANCEL_REQUESTED;
+    }
+
+    public void cancel() {
+        // CANCEL_REQUESTED 또는 CREATED/CONFIRMED 에서만 최종 취소 허용
+        if (!(this.status == OrderStatus.CANCEL_REQUESTED || this.status == OrderStatus.CREATED || this.status == OrderStatus.CONFIRMED)) {
+            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
+        }
         this.status = OrderStatus.CANCELED;
     }
 
-    public void transitionToCompleted() {
-        validateTransition(OrderStatus.PAID, OrderErrorStatus.INVALID_TRANSITION_TO_COMPLETED);
-        this.status = OrderStatus.COMPLETED;
-    }
+    // 레거시 결제 중심 전이 메서드 제거됨
 
     private void validateMemberId(Long memberId) {
         if (memberId == null) {
@@ -104,15 +130,7 @@ public class Order extends BaseEntity {
         }
     }
 
-    private void validateCancellation() {
-        if (!isCancellable()) {
-            throw new OrderHandler(OrderErrorStatus.INVALID_TRANSITION_TO_CANCELED);
-        }
-    }
-
-    private boolean isCancellable() {
-        return this.status == OrderStatus.CREATED || this.status == OrderStatus.PENDING;
-    }
+    // 레거시 취소 검증 제거됨
 
     /**
      * 테스트용 Order 엔티티 생성 메서드
@@ -127,7 +145,7 @@ public class Order extends BaseEntity {
             java.lang.reflect.Field idField = Order.class.getDeclaredField("id");
             idField.setAccessible(true);
             idField.set(order, id);
-            
+
             java.lang.reflect.Field statusField = Order.class.getDeclaredField("status");
             statusField.setAccessible(true);
             statusField.set(order, status);
@@ -136,5 +154,4 @@ public class Order extends BaseEntity {
         }
         return order;
     }
-
 }

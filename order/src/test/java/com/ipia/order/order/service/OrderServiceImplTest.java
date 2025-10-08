@@ -31,8 +31,10 @@ import com.ipia.order.web.dto.response.order.OrderListResponse;
 import com.ipia.order.web.dto.response.order.OrderResponse;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 import java.util.Collections;
+import java.util.function.Supplier;
 
 /**
  * OrderService 실패 케이스 테스트
@@ -75,7 +77,7 @@ class OrderServiceImplTest {
         // 기본 동작: 멱등 키가 주어지면 공급자(operation)를 실행해 결과를 반환
         lenient().when(idempotencyKeyService.executeWithIdempotency(anyString(), anyString(), any(Class.class), any()))
                 .thenAnswer(invocation -> {
-                    java.util.function.Supplier<?> op = invocation.getArgument(3);
+                    Supplier<?> op = invocation.getArgument(3);
                     return op.get();
                 });
     }
@@ -349,7 +351,7 @@ class OrderServiceImplTest {
         void listOrders_MemberAndStatus_ReturnsEmptyList() {
             // given
             Long memberId = 1L;
-            OrderStatus status = OrderStatus.PAID;
+            OrderStatus status = OrderStatus.CONFIRMED;
             int page = 0;
             int size = 10;
 
@@ -388,7 +390,7 @@ class OrderServiceImplTest {
                     .totalAmount(20000L)
                     .status(status)
                     .build();
-            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
+            List<Order> expectedOrders = List.of(order1, order2);
 
             given(memberService.findById(memberId))
                     .willReturn(Optional.of(validMember));
@@ -424,9 +426,9 @@ class OrderServiceImplTest {
                     .id(2L)
                     .memberId(memberId)
                     .totalAmount(20000L)
-                    .status(OrderStatus.PAID)
+                    .status(OrderStatus.CONFIRMED)
                     .build();
-            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
+            List<Order> expectedOrders = List.of(order1, order2);
 
             given(memberService.findById(memberId))
                     .willReturn(Optional.of(validMember));
@@ -448,7 +450,7 @@ class OrderServiceImplTest {
         @DisplayName("상태만으로 주문 목록 조회 성공")
         void listOrders_WithStatusOnly_ReturnsOrders() {
             // given
-            OrderStatus status = OrderStatus.PAID;
+            OrderStatus status = OrderStatus.CONFIRMED;
             int page = 0;
             int size = 10;
             
@@ -464,7 +466,7 @@ class OrderServiceImplTest {
                     .totalAmount(20000L)
                     .status(status)
                     .build();
-            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2);
+            List<Order> expectedOrders = List.of(order1, order2);
 
             given(orderRepository.findByStatus(status, 
                     PageRequest.of(page, size)))
@@ -497,7 +499,7 @@ class OrderServiceImplTest {
                     .id(2L)
                     .memberId(2L)
                     .totalAmount(20000L)
-                    .status(OrderStatus.PAID)
+                    .status(OrderStatus.CONFIRMED)
                     .build();
             Order order3 = OrderTestBuilder.builder()
                     .id(3L)
@@ -505,7 +507,7 @@ class OrderServiceImplTest {
                     .totalAmount(30000L)
                     .status(OrderStatus.COMPLETED)
                     .build();
-            java.util.List<Order> expectedOrders = java.util.List.of(order1, order2, order3);
+            List<Order> expectedOrders = List.of(order1, order2, order3);
 
             given(orderRepository.findAll(PageRequest.of(page, size)))
                     .willReturn(new PageImpl<>(expectedOrders));
@@ -571,15 +573,15 @@ class OrderServiceImplTest {
             long orderId = 1L;
             String reason = "취소 사유";
 
-            Order paidOrder = OrderTestBuilder.builder()
+            Order shippedOrder = OrderTestBuilder.builder()
                     .id(orderId)
                     .memberId(1L)
                     .totalAmount(10000L)
-                    .status(OrderStatus.PAID)
+                    .status(OrderStatus.SHIPPED)
                     .build();
 
             given(orderRepository.findById(orderId))
-                    .willReturn(Optional.of(paidOrder));
+                    .willReturn(Optional.of(shippedOrder));
 
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(orderId, reason))
@@ -593,19 +595,23 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
             String reason = "취소 사유";
-            String duplicateKey = "duplicate-cancel-key";
+            // 신규 정책: 멱등키 검증은 제거, 상태 기반으로만 검증
+            Order shipped = OrderTestBuilder.builder()
+                    .id(orderId)
+                    .memberId(1L)
+                    .totalAmount(10000L)
+                    .status(OrderStatus.SHIPPED)
+                    .build();
 
             given(orderRepository.findById(orderId))
-                    .willReturn(Optional.of(validOrder));
+                    .willReturn(Optional.of(shipped));
             
-            // TODO: IdempotencyKeyService Mock 설정 (Phase 2 후반에 구현)
-            // given(idempotencyKeyService.existsByKeyAndEndpoint(duplicateKey, "POST /api/orders/{orderId}/cancel"))
-            //         .willReturn(true);
+            // 신규 정책: 취소는 상태 기반으로만 검증 (멱등키 중복 검증 제거)
 
             // when & then
             assertThatThrownBy(() -> orderService.cancelOrder(orderId, reason))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.IDEMPOTENCY_CONFLICT.getCode());
+                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getCode());
         }
         // 성공 케이스
         @Test
@@ -632,7 +638,7 @@ class OrderServiceImplTest {
             // 멱등 서비스가 공급자를 실행하도록 설정(명시)
             given(idempotencyKeyService.executeWithIdempotency(eq("POST /api/orders"), eq(idempotencyKey), any(Class.class), any()))
                     .willAnswer(invocation -> {
-                        java.util.function.Supplier<Order> op = invocation.getArgument(3);
+                        Supplier<Order> op = invocation.getArgument(3);
                         return op.get();
                     });
 
@@ -682,20 +688,20 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
 
-            Order paidOrder = OrderTestBuilder.builder()
+            Order confirmedOrder = OrderTestBuilder.builder()
                     .id(orderId)
                     .memberId(1L)
                     .totalAmount(10000L)
-                    .status(OrderStatus.PAID)
+                    .status(OrderStatus.CONFIRMED)
                     .build();
 
             given(orderRepository.findById(orderId))
-                    .willReturn(Optional.of(paidOrder));
+                    .willReturn(Optional.of(confirmedOrder));
 
             // when & then
             assertThatThrownBy(() -> orderService.handlePaymentApproved(orderId))
                     .isInstanceOf(OrderHandler.class)
-                    .hasMessage(OrderErrorStatus.DUPLICATE_APPROVAL.getCode());
+                    .hasMessage(OrderErrorStatus.INVALID_ORDER_STATE.getCode());
         }
 
         @Test
@@ -769,15 +775,15 @@ class OrderServiceImplTest {
             // given
             long orderId = 1L;
             
-            Order pendingOrder = OrderTestBuilder.builder()
+            Order createdOrder = OrderTestBuilder.builder()
                     .id(orderId)
                     .memberId(1L)
                     .totalAmount(10000L)
-                    .status(OrderStatus.PENDING)
+                    .status(OrderStatus.CREATED)
                     .build();
 
             given(orderRepository.findById(orderId))
-                    .willReturn(Optional.of(pendingOrder));
+                    .willReturn(Optional.of(createdOrder));
 
             // when
             orderService.handlePaymentApproved(orderId);
@@ -788,6 +794,6 @@ class OrderServiceImplTest {
 
             OrderPaidEvent capturedEvent = eventCaptor.getValue();
             assertThat(capturedEvent.getOrderId()).isEqualTo(orderId);
-            assertThat(capturedEvent.getPaidAmount()).isEqualTo(pendingOrder.getTotalAmount());
+            assertThat(capturedEvent.getPaidAmount()).isEqualTo(createdOrder.getTotalAmount());
         }
 }
