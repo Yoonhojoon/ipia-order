@@ -63,13 +63,10 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
                 log.info("✅ Redis 연결 성공 - 멱등성 서비스가 Redis를 활용하여 최적화된 성능으로 동작합니다.");
                 log.info("📊 Redis 기능: 캐싱, 동시성 제어, 빠른 응답 재사용");
             } else {
-                log.error("❌ Redis 연결 실패 - 예상치 못한 응답: {}", result);
-                throw new IllegalStateException("Redis 연결이 올바르지 않습니다. 응답: " + result);
+                log.warn("⚠️ Redis 연결 불안정 - 예상치 못한 응답: {}. DB fallback으로 동작합니다.", result);
             }
         } catch (Exception e) {
-            log.error("❌ Redis 연결 실패 - 멱등성 서비스는 Redis가 필수입니다!", e);
-            log.error("🔧 Redis 설정을 확인하세요: spring.data.redis.host, spring.data.redis.port");
-            throw new IllegalStateException("멱등성 서비스는 Redis 연결이 필수입니다. Redis를 시작하고 설정을 확인하세요.", e);
+            log.warn("⚠️ Redis 연결 실패 - DB fallback으로 동작합니다. Redis 설정을 확인하세요: spring.data.redis.host, spring.data.redis.port", e);
         }
     }
 
