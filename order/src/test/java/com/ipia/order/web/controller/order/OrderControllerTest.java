@@ -3,6 +3,7 @@ package com.ipia.order.web.controller.order;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
+import com.ipia.order.common.util.JwtUtil;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
 import com.ipia.order.order.service.OrderService;
@@ -39,6 +40,9 @@ class OrderControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
     private OrderService orderService;
 
     @BeforeEach
@@ -48,11 +52,11 @@ class OrderControllerTest {
         Order mockOrder2 = createMockOrder(2L, 1L, 20000L, OrderStatus.PENDING);
         
         // 주문 생성 Mock
-        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(10000L), Mockito.anyString()))
+        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(10000L), Mockito.any()))
                 .thenReturn(mockOrder);
-        Mockito.when(orderService.createOrder(Mockito.eq(999L), Mockito.eq(10000L), Mockito.anyString()))
+        Mockito.when(orderService.createOrder(Mockito.eq(999L), Mockito.eq(10000L), Mockito.any()))
                 .thenThrow(new OrderHandler(OrderErrorStatus.MEMBER_NOT_FOUND));
-        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(-1000L), Mockito.anyString()))
+        Mockito.when(orderService.createOrder(Mockito.eq(1L), Mockito.eq(-1000L), Mockito.any()))
                 .thenThrow(new OrderHandler(OrderErrorStatus.INVALID_AMOUNT));
 
         // 주문 조회 Mock
@@ -67,9 +71,9 @@ class OrderControllerTest {
 
         // 주문 취소 Mock
         Order canceledOrder = createMockOrder(1L, 1L, 10000L, OrderStatus.CANCELED);
-        Mockito.when(orderService.cancelOrder(Mockito.eq(1L), Mockito.anyString()))
+        Mockito.when(orderService.cancelOrder(Mockito.eq(1L), Mockito.any()))
                 .thenReturn(canceledOrder);
-        Mockito.when(orderService.cancelOrder(Mockito.eq(999L), Mockito.anyString()))
+        Mockito.when(orderService.cancelOrder(Mockito.eq(999L), Mockito.any()))
                 .thenThrow(new OrderHandler(OrderErrorStatus.ORDER_NOT_FOUND));
     }
 
