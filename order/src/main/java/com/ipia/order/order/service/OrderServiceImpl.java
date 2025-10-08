@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import com.ipia.order.member.domain.Member;
 import com.ipia.order.order.event.OrderPaidEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
@@ -22,6 +23,8 @@ import com.ipia.order.order.event.OrderCanceledEvent;
 import com.ipia.order.order.event.OrderCreatedEvent;
 import com.ipia.order.order.repository.OrderRepository;
 import com.ipia.order.idempotency.service.IdempotencyKeyService;
+import com.ipia.order.web.dto.response.order.OrderResponse;
+import com.ipia.order.web.dto.response.order.OrderListResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -73,26 +76,50 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<Order> listOrders(@Nullable Long memberId, @Nullable OrderStatus status, int page, int size) {
+    public OrderListResponse listOrders(@Nullable Long memberId, @Nullable String status, int page, int size) {
         validatePagination(page, size);
         validateMemberFilter(memberId);
 
+        // String status를 OrderStatus enum으로 변환
+        OrderStatus orderStatus = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new OrderHandler(OrderErrorStatus.INVALID_FILTER);
+            }
+        }
+
         Pageable pageable = PageRequest.of(page, size);
+        Page<Order> orderPage;
         
         // 동적 쿼리 로직: 필터 조건에 따라 다른 Repository 메서드 호출
-        if (memberId != null && status != null) {
+        if (memberId != null && orderStatus != null) {
             // 회원 ID와 상태 모두 지정
-            return orderRepository.findByMemberIdAndStatus(memberId, status, pageable).getContent();
+            orderPage = orderRepository.findByMemberIdAndStatus(memberId, orderStatus, pageable);
         } else if (memberId != null) {
             // 회원 ID만 지정
-            return orderRepository.findByMemberId(memberId, pageable).getContent();
-        } else if (status != null) {
+            orderPage = orderRepository.findByMemberId(memberId, pageable);
+        } else if (orderStatus != null) {
             // 상태만 지정
-            return orderRepository.findByStatus(status, pageable).getContent();
+            orderPage = orderRepository.findByStatus(orderStatus, pageable);
         } else {
             // 필터 없음 - 전체 조회
-            return orderRepository.findAll(pageable).getContent();
+            orderPage = orderRepository.findAll(pageable);
         }
+
+        // DTO 매핑
+        List<OrderResponse> orderResponses = orderPage.getContent().stream()
+                .map(OrderResponse::from)
+                .toList();
+        
+        return OrderListResponse.builder()
+                .orders(orderResponses)
+                .totalCount(orderPage.getTotalElements())
+                .page(page)
+                .size(size)
+                .totalPages(orderPage.getTotalPages())
+                .build();
     }
 
     @Override

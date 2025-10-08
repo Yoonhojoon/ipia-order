@@ -2,6 +2,8 @@ package com.ipia.order.order.service;
 
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.enums.OrderStatus;
+import com.ipia.order.web.dto.response.order.OrderResponse;
+import com.ipia.order.web.dto.response.order.OrderListResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.lang.Nullable;
 
@@ -47,14 +49,14 @@ public interface OrderService {
      * 주문 목록 조회 (페이지네이션)
      * 
      * @param memberId 회원 ID (선택사항)
-     * @param status 주문 상태 (선택사항)
+     * @param status 주문 상태 문자열 (선택사항)
      * @param page 페이지 번호 (0부터 시작)
      * @param size 페이지 크기
-     * @return 주문 목록
+     * @return 주문 목록 응답 DTO
      * @throws InvalidFilterException 잘못된 필터 조건
      * @throws InvalidPaginationException 잘못된 페이지네이션 파라미터
      */
-    List<Order> listOrders(@Nullable Long memberId, @Nullable OrderStatus status, int page, int size);
+    OrderListResponse listOrders(@Nullable Long memberId, @Nullable String status, int page, int size);
     
     /**
      * 주문 취소 (비즈니스 취소)

@@ -7,7 +7,6 @@ import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
 import com.ipia.order.common.exception.order.status.OrderSuccessStatus;
 import com.ipia.order.order.domain.Order;
-import com.ipia.order.order.enums.OrderStatus;
 import com.ipia.order.order.service.OrderService;
 import com.ipia.order.web.dto.request.order.CreateOrderRequest;
 import com.ipia.order.web.dto.request.order.CancelOrderRequest;
@@ -24,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -115,29 +113,7 @@ public class OrderController {
             @Parameter(description = "페이지 번호", example = "0") @RequestParam(value = "page", defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "10") @RequestParam(value = "size", defaultValue = "10") int size) {
         
-        OrderStatus orderStatus = null;
-        if (status != null && !status.trim().isEmpty()) {
-            try {
-                orderStatus = OrderStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new OrderHandler(OrderErrorStatus.INVALID_FILTER);
-            }
-        }
-        
-        List<Order> orders = orderService.listOrders(memberId, orderStatus, page, size);
-        
-        List<OrderResponse> orderResponses = orders.stream()
-                .map(OrderResponse::from)
-                .toList();
-        
-        OrderListResponse response = OrderListResponse.builder()
-                .orders(orderResponses)
-                .totalCount(orders.size())
-                .page(page)
-                .size(size)
-                .totalPages((int) Math.ceil((double) orders.size() / size))
-                .build();
-        
+        OrderListResponse response = orderService.listOrders(memberId, status, page, size);
         return ApiResponse.onSuccess(OrderSuccessStatus.ORDERS_FOUND, response);
     }
 

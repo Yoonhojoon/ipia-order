@@ -27,6 +27,8 @@ import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import com.ipia.order.web.dto.response.order.OrderListResponse;
+import com.ipia.order.web.dto.response.order.OrderResponse;
 
 import java.lang.reflect.Field;
 import java.util.Optional;
@@ -242,7 +244,7 @@ class OrderServiceImplTest {
             int size = 10;
 
             // when & then
-            assertThatThrownBy(() -> orderService.listOrders(memberId, status, invalidPage, size))
+            assertThatThrownBy(() -> orderService.listOrders(memberId, status.name(), invalidPage, size))
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.INVALID_PAGINATION.getCode());
         }
@@ -257,7 +259,7 @@ class OrderServiceImplTest {
             int invalidSize = 0; // 0 또는 음수 크기
 
             // when & then
-            assertThatThrownBy(() -> orderService.listOrders(memberId, status, page, invalidSize))
+            assertThatThrownBy(() -> orderService.listOrders(memberId, status.name(), page, invalidSize))
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.INVALID_PAGINATION.getCode());
         }
@@ -275,7 +277,7 @@ class OrderServiceImplTest {
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> orderService.listOrders(nonExistentMemberId, status, page, size))
+            assertThatThrownBy(() -> orderService.listOrders(nonExistentMemberId, status.name(), page, size))
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.INVALID_FILTER.getCode());
         }
@@ -297,11 +299,11 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
+            OrderListResponse result = orderService.listOrders(memberId, status.name(), page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).isEmpty();
+            assertThat(result.getOrders()).isEmpty();
         }
 
         @Test
@@ -315,11 +317,11 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(null, null, page, size);
+            OrderListResponse result = orderService.listOrders(null, null, page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).isEmpty();
+            assertThat(result.getOrders()).isEmpty();
         }
 
         @Test
@@ -335,11 +337,11 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(null, status, page, size);
+            OrderListResponse result = orderService.listOrders(null, status.name(), page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).isEmpty();
+            assertThat(result.getOrders()).isEmpty();
         }
 
         @Test
@@ -358,11 +360,11 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(Collections.emptyList()));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
+            OrderListResponse result = orderService.listOrders(memberId, status.name(), page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).isEmpty();
+            assertThat(result.getOrders()).isEmpty();
         }
 
         @Test
@@ -395,12 +397,13 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(expectedOrders));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(memberId, status, page, size);
+            OrderListResponse result = orderService.listOrders(memberId, status.name(), page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).hasSize(2);
-            assertThat(result).containsExactlyInAnyOrder(order1, order2);
+            assertThat(result.getOrders()).hasSize(2);
+            assertThat(result.getOrders().stream().map(OrderResponse::getId).toList())
+                    .containsExactlyInAnyOrder(order1.getId(), order2.getId());
         }
 
         @Test
@@ -432,12 +435,13 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(expectedOrders));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(memberId, null, page, size);
+            OrderListResponse result = orderService.listOrders(memberId, null, page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).hasSize(2);
-            assertThat(result).containsExactlyInAnyOrder(order1, order2);
+            assertThat(result.getOrders()).hasSize(2);
+            assertThat(result.getOrders().stream().map(OrderResponse::getId).toList())
+                    .containsExactlyInAnyOrder(order1.getId(), order2.getId());
         }
 
         @Test
@@ -467,12 +471,13 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(expectedOrders));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(null, status, page, size);
+            OrderListResponse result = orderService.listOrders(null, status.name(), page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).hasSize(2);
-            assertThat(result).containsExactlyInAnyOrder(order1, order2);
+            assertThat(result.getOrders()).hasSize(2);
+            assertThat(result.getOrders().stream().map(OrderResponse::getId).toList())
+                    .containsExactlyInAnyOrder(order1.getId(), order2.getId());
         }
 
         @Test
@@ -506,12 +511,13 @@ class OrderServiceImplTest {
                     .willReturn(new PageImpl<>(expectedOrders));
 
             // when
-            java.util.List<Order> result = orderService.listOrders(null, null, page, size);
+            OrderListResponse result = orderService.listOrders(null, null, page, size);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result).hasSize(3);
-            assertThat(result).containsExactlyInAnyOrder(order1, order2, order3);
+            assertThat(result.getOrders()).hasSize(3);
+            assertThat(result.getOrders().stream().map(OrderResponse::getId).toList())
+                    .containsExactlyInAnyOrder(order1.getId(), order2.getId(), order3.getId());
         }
     }
 
