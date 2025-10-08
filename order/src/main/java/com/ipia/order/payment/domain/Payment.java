@@ -1,10 +1,12 @@
 package com.ipia.order.payment.domain;
 
+import com.ipia.order.common.entity.BaseEntity;
 import com.ipia.order.common.exception.payment.PaymentHandler;
 import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import com.ipia.order.payment.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -21,7 +23,7 @@ import java.time.LocalDateTime;
 @Table(name = "payments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Payment {
+public class Payment extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -83,22 +85,23 @@ public class Payment {
     private LocalDateTime refundedAt;
 
     /**
-     * 생성 일시
-     */
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    /**
-     * 수정 일시
-     */
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt = LocalDateTime.now();
-
-    /**
      * 낙관적 락을 위한 버전
      */
     @Version
     private Long version;
+
+    @Builder(access = AccessLevel.PROTECTED)
+    private Payment(Long orderId, BigDecimal paidAmount, String providerTxnId) {
+        validateOrderId(orderId);
+        validatePaidAmount(paidAmount);
+        validateProviderTxnId(providerTxnId);
+        this.orderId = orderId;
+        this.paidAmount = paidAmount;
+        this.providerTxnId = providerTxnId;
+        this.status = PaymentStatus.PENDING;
+        this.canceledAmount = BigDecimal.ZERO;
+        this.refundedAmount = BigDecimal.ZERO;
+    }
 
     /**
      * 결제 생성 (팩토리 메서드)
@@ -109,12 +112,11 @@ public class Payment {
      * @return 생성된 Payment 엔티티
      */
     public static Payment create(Long orderId, BigDecimal paidAmount, String providerTxnId) {
-        Payment payment = new Payment();
-        payment.orderId = orderId;
-        payment.paidAmount = paidAmount;
-        payment.providerTxnId = providerTxnId;
-        payment.status = PaymentStatus.PENDING;
-        return payment;
+        return Payment.builder()
+                .orderId(orderId)
+                .paidAmount(paidAmount)
+                .providerTxnId(providerTxnId)
+                .build();
     }
 
     /**
@@ -124,20 +126,11 @@ public class Payment {
      * @throws PaymentHandler 현재 상태에서 승인 불가능한 경우 또는 결제 금액 불일치
      */
     public void approve(BigDecimal orderTotalAmount) {
-        // 상태 검증
-        if (!status.canApprove()) {
-            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
-        }
+        validateApprovalStatus();
+        validateAmountMatch(orderTotalAmount);
 
-        // 금액 검증
-        if (paidAmount == null || paidAmount.compareTo(orderTotalAmount) != 0) {
-            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_MISMATCH);
-        }
-
-        // 상태 전이
         this.status = PaymentStatus.APPROVED;
         this.approvedAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -148,25 +141,12 @@ public class Payment {
      * @throws PaymentHandler 현재 상태에서 취소 불가능한 경우 또는 취소 금액 초과
      */
     public void cancel(BigDecimal cancelAmount, String reason) {
-        // 상태 검증
-        if (!status.canCancel()) {
-            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_CANCEL);
-        }
+        validateCancelStatus();
+        validateCancelAmount(cancelAmount);
 
-        // 금액 검증
-        if (cancelAmount == null || cancelAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new PaymentHandler(PaymentErrorStatus.INVALID_CANCEL_AMOUNT);
-        }
-
-        if (cancelAmount.compareTo(paidAmount) > 0) {
-            throw new PaymentHandler(PaymentErrorStatus.CANCEL_AMOUNT_EXCEEDED);
-        }
-
-        // 상태 전이
         this.status = PaymentStatus.CANCELED;
         this.canceledAmount = cancelAmount;
         this.canceledAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -177,25 +157,12 @@ public class Payment {
      * @throws PaymentHandler 현재 상태에서 환불 불가능한 경우 또는 환불 금액 초과
      */
     public void refund(BigDecimal refundAmount, String reason) {
-        // 상태 검증
-        if (!status.canRefund()) {
-            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_REFUND);
-        }
+        validateRefundStatus();
+        validateRefundAmount(refundAmount);
 
-        // 금액 검증
-        if (refundAmount == null || refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new PaymentHandler(PaymentErrorStatus.INVALID_REFUND_AMOUNT);
-        }
-
-        if (refundAmount.compareTo(canceledAmount) > 0) {
-            throw new PaymentHandler(PaymentErrorStatus.REFUND_AMOUNT_EXCEEDED);
-        }
-
-        // 상태 전이
         this.status = PaymentStatus.REFUNDED;
         this.refundedAmount = refundAmount;
         this.refundedAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -224,5 +191,67 @@ public class Payment {
      */
     public boolean isPending() {
         return status == PaymentStatus.PENDING;
+    }
+
+    // ==================== 검증 메서드 ====================
+
+    private void validateOrderId(Long orderId) {
+        if (orderId == null) {
+            throw new PaymentHandler(PaymentErrorStatus.ORDER_ID_REQUIRED);
+        }
+    }
+
+    private void validatePaidAmount(BigDecimal paidAmount) {
+        if (paidAmount == null || paidAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_REQUIRED);
+        }
+    }
+
+    private void validateProviderTxnId(String providerTxnId) {
+        if (providerTxnId == null || providerTxnId.trim().isEmpty()) {
+            throw new PaymentHandler(PaymentErrorStatus.PROVIDER_TXN_ID_REQUIRED);
+        }
+    }
+
+    private void validateAmountMatch(BigDecimal orderTotalAmount) {
+        if (paidAmount == null || paidAmount.compareTo(orderTotalAmount) != 0) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_MISMATCH);
+        }
+    }
+
+    private void validateCancelAmount(BigDecimal cancelAmount) {
+        if (cancelAmount == null || cancelAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentHandler(PaymentErrorStatus.INVALID_CANCEL_AMOUNT);
+        }
+        if (cancelAmount.compareTo(paidAmount) > 0) {
+            throw new PaymentHandler(PaymentErrorStatus.CANCEL_AMOUNT_EXCEEDED);
+        }
+    }
+
+    private void validateRefundAmount(BigDecimal refundAmount) {
+        if (refundAmount == null || refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentHandler(PaymentErrorStatus.INVALID_REFUND_AMOUNT);
+        }
+        if (refundAmount.compareTo(canceledAmount) > 0) {
+            throw new PaymentHandler(PaymentErrorStatus.REFUND_AMOUNT_EXCEEDED);
+        }
+    }
+
+    private void validateApprovalStatus() {
+        if (!status.canApprove()) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
+        }
+    }
+
+    private void validateCancelStatus() {
+        if (!status.canCancel()) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_CANCEL);
+        }
+    }
+
+    private void validateRefundStatus() {
+        if (!status.canRefund()) {
+            throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_REFUND);
+        }
     }
 }
