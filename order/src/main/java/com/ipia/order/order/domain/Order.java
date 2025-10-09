@@ -110,7 +110,6 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.CANCELED;
     }
 
-    // 레거시 결제 중심 전이 메서드 제거됨
 
     private void validateMemberId(Long memberId) {
         if (memberId == null) {
