@@ -146,6 +146,114 @@ class PaymentServiceImplTest {
                     .isInstanceOf(UnsupportedOperationException.class);
         }
     }
+
+    @Nested
+    @DisplayName("approve - 추가 케이스")
+    class ApproveMoreTests {
+        @Test
+        @DisplayName("이미 승인된 결제 재승인 시도 예외 (미구현 스텁)")
+        void reapprove_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent-approved", "paymentKey-abc", 1L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("승인 불가능한 상태에서 승인 시도 예외 (미구현 스텁)")
+        void invalidState_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent-canceled", "paymentKey-abc", 1L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("Toss 4xx 매핑 테스트 (미구현 스텁)")
+        void toss4xx_shouldThrowMapped() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent-4xx", "paymentKey-4xx", 1L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("Toss 5xx/타임아웃 재시도 및 초과 실패 (미구현 스텁)")
+        void toss5xx_retry_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent-5xx", "paymentKey-5xx", 1L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("취소 - 추가 케이스")
+    class CancelMoreTests {
+        @Test
+        @DisplayName("취소 불가능한 상태에서 취소 시도 예외 (미구현 스텁)")
+        void invalidState_cancel_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.cancel(
+                    "paymentKey-not-approved", new BigDecimal("1000"), "사유"
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("Toss 4xx 매핑 테스트 (미구현 스텁)")
+        void toss4xx_cancel_shouldThrowMapped() {
+            assertThatThrownBy(() -> paymentService.cancel(
+                    "paymentKey-4xx", new BigDecimal("1000"), "사유"
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("Toss 5xx/타임아웃 재시도 및 초과 실패 (미구현 스텁)")
+        void toss5xx_cancel_retry_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.cancel(
+                    "paymentKey-5xx", new BigDecimal("1000"), "사유"
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("데이터 검증")
+    class ValidationTests {
+        @Test
+        @DisplayName("paymentKey null/blank 예외 (미구현 스텁)")
+        void invalidPaymentKey_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent", "", 1L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+
+            assertThatThrownBy(() -> paymentService.cancel(
+                    null, new BigDecimal("1000"), "사유"
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("orderId 0/음수 예외 (미구현 스텁)")
+        void invalidOrderId_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent", "paymentKey", 0L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
+        @DisplayName("amount 음수/0 예외 (미구현 스텁)")
+        void invalidAmount_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent", "paymentKey", 1L, new BigDecimal("0")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("외부 의존성/재시도 정책")
+    class ExternalDependencyTests {
+        @Test
+        @DisplayName("네트워크 오류/타임아웃 재시도 정책 (미구현 스텁)")
+        void networkTimeout_retry_shouldThrow() {
+            assertThatThrownBy(() -> paymentService.approve(
+                    "intent-timeout", "paymentKey-timeout", 1L, new BigDecimal("10000")
+            )).isInstanceOf(UnsupportedOperationException.class);
+        }
+    }
 }
 
 
