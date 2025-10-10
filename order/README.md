@@ -15,8 +15,7 @@ Spring Boot 기반 주문·결제 서버 (Intern 과제)
 - **보안**: Spring Security, JWT
 - **운영**: Actuator, Redis 캐시, Swagger(OpenAPI) 문서
 
-- 현재 컨트롤러에 권한 매칭 리팩토링으로 인해, 컨트롤러 쪽 테스트들이 실패하는 상황입니다. 양해 부탁드립니다.
-- 필터 별 주문 조회 시 조건에 PENDING이 아닌, CREATED 등 OrderStatus에 있는 상태로 기입해야 작동합니다. 
+
 
 ### 🚀 기술적 어필 포인트
 - **DDD 기반 설계**: 비즈니스 로직을 도메인 엔티티에 캡슐화하여 유지보수성 향상
@@ -64,6 +63,10 @@ SPRING_DATA_REDIS_HOST=redis
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - H2 Console: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:testdb` )
 
+- 현재 컨트롤러에 권한 매칭 리팩토링으로 인해, 컨트롤러 쪽 테스트들이 실패하는 상황입니다. 양해 부탁드립니다.
+- 필터 별 주문 조회 시 조건에 PENDING이 아닌, CREATED 등 OrderStatus에 있는 상태로 기입해야 작동합니다.
+- 
+
 ### 테스트 계정 (dev 프로파일)
 개발 편의를 위해 자동 생성되는 테스트 계정들입니다:
 - **관리자**: admin@local.dev / admin1234
@@ -99,10 +102,6 @@ cd order
 - 코드 스타일: 가독성/명료성 우선, 의미 있는 네이밍, 불필요한 주석 배제
 - 예외/에러: 도메인 예외 명확화, Validation 적극 활용, ControllerAdvice로 응답 일관화 권장
 
-### 자주 묻는 질문(FAQ)
-- Swagger가 열리지 않아요: 앱이 8080 포트로 실행 중인지, `springdoc` 의존성이 포함되었는지 확인
-- H2 접속이 안 돼요: `application.yml` 의 H2 Console 경로/URL 확인, 메모리 DB URL 사용
-- Toss 연동 테스트: `toss.enableRealCall=false` 로 mock/스텁 우선, 외부 호출은 단계적으로 전환
 
 ### 라이선스
 내부 과제 용도로 사용됩니다.
