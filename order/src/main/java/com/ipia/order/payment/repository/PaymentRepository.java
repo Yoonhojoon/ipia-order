@@ -1,4 +1,4 @@
-package com.ipia.order.payment.service.port;
+package com.ipia.order.payment.repository;
 
 import java.util.Optional;
 

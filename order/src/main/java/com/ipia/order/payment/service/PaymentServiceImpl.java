@@ -17,7 +17,7 @@ import com.ipia.order.payment.service.external.TossConfirmResponse;
 import com.ipia.order.payment.service.external.TossPaymentClient;
 import com.ipia.order.payment.service.port.PaymentIntentStore;
 import com.ipia.order.payment.service.port.PaymentIntentStore.PaymentIntentData;
-import com.ipia.order.payment.service.port.PaymentRepository;
+import com.ipia.order.payment.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

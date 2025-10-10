@@ -15,7 +15,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -50,25 +49,6 @@ public class IdempotencyKeyServiceImpl implements IdempotencyKeyService {
     // Redis 필수: 멱등성 서비스는 Redis가 반드시 필요
     private final StringRedisTemplate redisTemplate;
 
-    @PostConstruct
-    public void checkRedisConnection() {
-        try {
-            // Redis 연결 테스트
-            String testKey = "idempotency:health:check";
-            redisTemplate.opsForValue().set(testKey, "ok", Duration.ofSeconds(10));
-            String result = redisTemplate.opsForValue().get(testKey);
-            redisTemplate.delete(testKey);
-
-            if ("ok".equals(result)) {
-                log.info("✅ Redis 연결 성공 - 멱등성 서비스가 Redis를 활용하여 최적화된 성능으로 동작합니다.");
-                log.info("📊 Redis 기능: 캐싱, 동시성 제어, 빠른 응답 재사용");
-            } else {
-                log.warn("⚠️ Redis 연결 불안정 - 예상치 못한 응답: {}. DB fallback으로 동작합니다.", result);
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Redis 연결 실패 - DB fallback으로 동작합니다. Redis 설정을 확인하세요: spring.data.redis.host, spring.data.redis.port", e);
-        }
-    }
 
     @Override
     @Transactional

@@ -14,7 +14,6 @@ import java.util.Optional;
 import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import com.ipia.order.payment.domain.Payment;
 import com.ipia.order.payment.enums.PaymentStatus;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,7 @@ import com.ipia.order.payment.service.external.TossConfirmResponse;
 import com.ipia.order.payment.service.external.TossPaymentClient;
 import com.ipia.order.payment.domain.PaymentTestBuilder;
 import com.ipia.order.payment.service.port.PaymentIntentStore;
-import com.ipia.order.payment.service.port.PaymentRepository;
+import com.ipia.order.payment.repository.PaymentRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceImplTest {
