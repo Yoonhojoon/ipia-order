@@ -12,6 +12,7 @@ import com.ipia.order.web.dto.request.order.CreateOrderRequest;
 import com.ipia.order.web.dto.request.order.CancelOrderRequest;
 import com.ipia.order.web.dto.response.order.OrderResponse;
 import com.ipia.order.web.dto.response.order.OrderListResponse;
+import com.ipia.order.common.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -83,8 +84,9 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
             @Parameter(description = "주문 ID", example = "1") @PathVariable("id") Long id,
-            @AuthenticationPrincipal(expression = "memberId") Long memberId) {
-        
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+       
+        Long memberId = user.getMemberId();
         Optional<Order> orderOptional = orderService.getOrder(id, memberId);
         
         if (orderOptional.isEmpty()) {

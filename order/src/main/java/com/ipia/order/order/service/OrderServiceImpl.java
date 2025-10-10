@@ -1,6 +1,7 @@
 package com.ipia.order.order.service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -81,7 +82,7 @@ public class OrderServiceImpl implements OrderService {
     public Optional<Order> getOrder(long orderId, long requesterMemberId) {
         log.info("[Order] 주문 단건 조회(소유자 확인) 요청: orderId={}, requesterId={}", orderId, requesterMemberId);
         Order order = findOrderById(orderId);
-        if (!java.util.Objects.equals(order.getMemberId(), requesterMemberId)) {
+        if (!Objects.equals(order.getMemberId(), requesterMemberId)) {
             throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
         }
         return Optional.of(order);
