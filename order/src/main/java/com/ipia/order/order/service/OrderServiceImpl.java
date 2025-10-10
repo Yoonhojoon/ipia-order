@@ -31,9 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 주문 서비스 구현체
- * 
- * TODO: TDD Green 단계에서 구현 예정
- * 현재는 테스트 컴파일을 위한 스텁 구현
  */
 @Service
 @Slf4j
@@ -81,7 +78,6 @@ public class OrderServiceImpl implements OrderService {
     public Optional<Order> getOrder(long orderId) {
         log.info("[Order] 주문 단건 조회 요청: orderId={}", orderId);
         findOrderById(orderId); // 주문 존재 여부만 확인
-        // 인증/인가 미도입 단계: 접근 제어 실패로 처리 (테스트는 실패 케이스만 존재)
         throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
     }
 

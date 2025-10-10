@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PaymentServiceImpl implements PaymentService {
 
     private final TossPaymentClient tossPaymentClient;
-    private final PaymentIntentService paymentIntentStore;
+    private final PaymentIntentService paymentIntentService;
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
     private final ApplicationEventPublisher eventPublisher;
@@ -46,8 +46,8 @@ public class PaymentServiceImpl implements PaymentService {
         // 의도 ID 생성
         String intentId = generateIntentId();
         
-        // Redis에 의도 저장
-        paymentIntentStore.store(intentId, orderId, amount, successUrl, failUrl, idempotencyKey, INTENT_TTL_SECONDS);
+        // 의도 저장 (DB 원본)
+        paymentIntentService.store(intentId, orderId, amount, successUrl, failUrl, idempotencyKey, INTENT_TTL_SECONDS);
         
         log.info("결제 의도 생성 완료: intentId={}, orderId={}, amount={}", intentId, orderId, amount);
         return intentId;
@@ -55,14 +55,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public void verify(String intentId, String paymentKey, long orderId, BigDecimal amount) {
+    public void verify(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey) {
         log.info("결제 의도 검증 요청: intentId={}, paymentKey={}, orderId={}, amount={}", intentId, paymentKey, orderId, amount);
         
         // 입력값 검증
-        validateVerifyParams(intentId, paymentKey, orderId, amount);
+        validateVerifyParams(intentId, paymentKey, orderId, amount, idempotencyKey);
         
         // 의도 조회
-        PaymentIntentData intent = paymentIntentStore.get(intentId);
+        PaymentIntentData intent = paymentIntentService.get(intentId);
         if (intent == null) {
             log.warn("결제 의도를 찾을 수 없음: intentId={}", intentId);
             throw new PaymentHandler(PaymentErrorStatus.PAYMENT_NOT_FOUND);
@@ -78,20 +78,25 @@ public class PaymentServiceImpl implements PaymentService {
             log.warn("결제 금액 불일치: intent.amount={}, request.amount={}", intent.amount(), amount);
             throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_MISMATCH);
         }
+
+        if (!intent.idempotencyKey().equals(idempotencyKey)) {
+            log.warn("멱등키 불일치: intent.idemKey={}, request.idemKey={}", intent.idempotencyKey(), idempotencyKey);
+            throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
+        }
         
         log.info("결제 의도 검증 성공: intentId={}, orderId={}, amount={}", intentId, orderId, amount);
     }
 
     @Override
     @Transactional
-    public Long approve(String intentId, String paymentKey, long orderId, BigDecimal amount) {
+    public Long approve(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey) {
         log.info("결제 승인 요청: intentId={}, paymentKey={}, orderId={}, amount={}", intentId, paymentKey, orderId, amount);
         
         // 입력값 검증
-        validateApproveParams(intentId, paymentKey, orderId, amount);
+        validateApproveParams(intentId, paymentKey, orderId, amount, idempotencyKey);
         
         // 의도 검증
-        verify(intentId, paymentKey, orderId, amount);
+        verify(intentId, paymentKey, orderId, amount, idempotencyKey);
         
         // 기존 결제 확인 (중복 승인 방지)
         paymentRepository.findByOrderId(orderId).ifPresent(payment -> {
@@ -112,7 +117,7 @@ public class PaymentServiceImpl implements PaymentService {
         Payment savedPayment = paymentRepository.save(payment);
         
         // 의도 삭제
-        paymentIntentStore.delete(intentId);
+        paymentIntentService.delete(intentId);
         
         // 주문 상태 업데이트 (결제 완료)
         orderService.handlePaymentApproved(orderId);
@@ -156,17 +161,17 @@ public class PaymentServiceImpl implements PaymentService {
             throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_REQUIRED);
         }
         if (!StringUtils.hasText(successUrl)) {
-            throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
+            throw new PaymentHandler(PaymentErrorStatus.SUCCESS_URL_REQUIRED);
         }
         if (!StringUtils.hasText(failUrl)) {
-            throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
+            throw new PaymentHandler(PaymentErrorStatus.FAIL_URL_REQUIRED);
         }
         if (!StringUtils.hasText(idempotencyKey)) {
             throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
         }
     }
 
-    private void validateVerifyParams(String intentId, String paymentKey, long orderId, BigDecimal amount) {
+    private void validateVerifyParams(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey) {
         if (!StringUtils.hasText(intentId)) {
             throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
         }
@@ -179,10 +184,13 @@ public class PaymentServiceImpl implements PaymentService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new PaymentHandler(PaymentErrorStatus.PAYMENT_AMOUNT_REQUIRED);
         }
+        if (!StringUtils.hasText(idempotencyKey)) {
+            throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
+        }
     }
 
-    private void validateApproveParams(String intentId, String paymentKey, long orderId, BigDecimal amount) {
-        validateVerifyParams(intentId, paymentKey, orderId, amount);
+    private void validateApproveParams(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey) {
+        validateVerifyParams(intentId, paymentKey, orderId, amount, idempotencyKey);
     }
 
     private void validateCancelParams(String paymentKey, BigDecimal cancelAmount, String reason) {

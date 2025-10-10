@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 
 import com.ipia.order.common.entity.BaseEntity;
 
+import com.ipia.order.common.exception.payment.PaymentHandler;
+import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -83,40 +85,54 @@ public class PaymentIntent extends BaseEntity {
 
     private void validateIntentId(String intentId) {
         if (intentId == null || intentId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Intent ID는 필수입니다.");
+            throw new PaymentHandler(
+                    PaymentErrorStatus.PROVIDER_TXN_ID_REQUIRED
+            );
         }
     }
 
     private void validateOrderId(Long orderId) {
         if (orderId == null || orderId <= 0) {
-            throw new IllegalArgumentException("Order ID는 양수여야 합니다.");
+            throw new PaymentHandler(
+                    PaymentErrorStatus.ORDER_ID_REQUIRED
+            );
         }
     }
 
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("결제 금액은 양수여야 합니다.");
+            throw new PaymentHandler(
+                    PaymentErrorStatus.PAYMENT_AMOUNT_REQUIRED
+            );
         }
     }
 
     private void validateUrls(String successUrl, String failUrl) {
         if (successUrl == null || successUrl.trim().isEmpty()) {
-            throw new IllegalArgumentException("Success URL은 필수입니다.");
+            throw new PaymentHandler(
+                    PaymentErrorStatus.SUCCESS_URL_REQUIRED
+            );
         }
         if (failUrl == null || failUrl.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fail URL은 필수입니다.");
+            throw new PaymentHandler(
+                    PaymentErrorStatus.FAIL_URL_REQUIRED
+            );
         }
     }
 
     private void validateIdempotencyKey(String idempotencyKey) {
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("Idempotency Key는 필수입니다.");
-        }
+            throw new PaymentHandler(
+                    PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY
+            );
+        }       
     }
 
     private void validateExpiresAt(LocalDateTime expiresAt) {
         if (expiresAt == null || expiresAt.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("만료 일시는 현재 시간 이후여야 합니다.");
+            throw new PaymentHandler(
+                    PaymentErrorStatus.INVALID_EXPIRES_AT
+            );
         }
     }
 }

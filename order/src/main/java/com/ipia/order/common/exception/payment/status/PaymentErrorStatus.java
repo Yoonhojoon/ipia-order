@@ -75,7 +75,15 @@ public enum PaymentErrorStatus implements ErrorResponse {
     @ExplainError("결제 멱등 키 충돌")
     PAYMENT_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "PAYMENT4026", "동일한 멱등 키로 이미 처리된 결제 요청입니다."),
     @ExplainError("유효하지 않은 멱등 키")
-    INVALID_IDEMPOTENCY_KEY(HttpStatus.BAD_REQUEST, "PAYMENT4027", "유효하지 않은 멱등 키입니다.");
+    INVALID_IDEMPOTENCY_KEY(HttpStatus.BAD_REQUEST, "PAYMENT4027", "유효하지 않은 멱등 키입니다."),
+
+    // 입력값 상세(의도 생성 관련)
+    @ExplainError("성공 URL이 필수")
+    SUCCESS_URL_REQUIRED(HttpStatus.BAD_REQUEST, "PAYMENT4028", "성공 URL은 필수입니다."),
+    @ExplainError("실패 URL이 필수")
+    FAIL_URL_REQUIRED(HttpStatus.BAD_REQUEST, "PAYMENT4029", "실패 URL은 필수입니다."),
+    @ExplainError("만료 일시가 현재 이전")
+    INVALID_EXPIRES_AT(HttpStatus.BAD_REQUEST, "PAYMENT4030", "만료 일시는 현재 시간 이후여야 합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
