@@ -10,23 +10,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 
+import com.ipia.order.common.util.JwtUtil;
+import com.ipia.order.web.controller.order.OrderController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.ipia.order.payment.service.PaymentService;
 
-@WebMvcTest(controllers = com.ipia.order.web.controller.payment.PaymentController.class)
+@WebMvcTest(value = PaymentController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 class PaymentControllerApiTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
     private PaymentService paymentService;
 
     @Test
@@ -48,7 +55,7 @@ class PaymentControllerApiTest {
                         .content(reqJson)
                         .header("Idempotency-Key", "idem-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.intentId").value("intent_123"));
+                .andExpect(jsonPath("$.data.intentId").value("intent_123"));
 
         verify(paymentService).createIntent(1L, new BigDecimal("10000"), "https://success", "https://fail", "idem-1");
     }
@@ -72,7 +79,7 @@ class PaymentControllerApiTest {
                         .content(reqJson)
                         .header("Idempotency-Key", "idem-2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paymentId").value(10));
+                .andExpect(jsonPath("$.data.paymentId").value(10));
 
         verify(paymentService).approve("intent_123", "pay_abc", 1L, new BigDecimal("10000"), "idem-2");
     }
@@ -91,7 +98,8 @@ class PaymentControllerApiTest {
         mockMvc.perform(post("/api/payments/cancel")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(reqJson))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true));
 
         verify(paymentService).cancel("pay_abc", new BigDecimal("5000"), "user cancel");
     }
@@ -112,7 +120,8 @@ class PaymentControllerApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(reqJson)
                         .header("Idempotency-Key", "idem-3"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true));
 
         verify(paymentService).verify("intent_123", "pay_abc", 1L, new BigDecimal("10000"), "idem-3");
     }
