@@ -15,8 +15,8 @@ import com.ipia.order.payment.domain.Payment;
 import com.ipia.order.payment.service.external.TossCancelResponse;
 import com.ipia.order.payment.service.external.TossConfirmResponse;
 import com.ipia.order.payment.service.external.TossPaymentClient;
-import com.ipia.order.payment.service.port.PaymentIntentStore;
-import com.ipia.order.payment.service.port.PaymentIntentStore.PaymentIntentData;
+import com.ipia.order.payment.intent.service.PaymentIntentService;
+import com.ipia.order.payment.intent.service.PaymentIntentService.PaymentIntentData;
 import com.ipia.order.payment.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PaymentServiceImpl implements PaymentService {
 
     private final TossPaymentClient tossPaymentClient;
-    private final PaymentIntentStore paymentIntentStore;
+    private final PaymentIntentService paymentIntentStore;
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
     private final ApplicationEventPublisher eventPublisher;

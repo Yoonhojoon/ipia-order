@@ -1,4 +1,4 @@
-package com.ipia.order.payment.domain;
+package com.ipia.order.payment.intent.domain;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,12 +14,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * 결제 의도 정보를 나타내는 엔티티
- * 
- * 결제 승인 전 임시 저장되는 결제 의도 정보를 관리하며,
- * Redis 실패 시 DB에 fallback 저장
- */
 @Entity
 @Table(name = "payment_intents")
 @Getter
@@ -30,45 +24,27 @@ public class PaymentIntent extends BaseEntity {
     @Column(name = "intent_id", nullable = false, unique = true)
     private String intentId;
 
-    /**
-     * 주문 ID (외래키)
-     */
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    /**
-     * 결제 금액
-     */
     @Column(name = "amount", precision = 19, scale = 2, nullable = false)
     private BigDecimal amount;
 
-    /**
-     * 성공 URL
-     */
     @Column(name = "success_url", nullable = false)
     private String successUrl;
 
-    /**
-     * 실패 URL
-     */
     @Column(name = "fail_url", nullable = false)
     private String failUrl;
 
-    /**
-     * 멱등성 키
-     */
     @Column(name = "idempotency_key", nullable = false)
     private String idempotencyKey;
 
-    /**
-     * 만료 일시
-     */
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
     @Builder(access = AccessLevel.PROTECTED)
-    private PaymentIntent(String intentId, Long orderId, BigDecimal amount, 
-                         String successUrl, String failUrl, String idempotencyKey, 
+    private PaymentIntent(String intentId, Long orderId, BigDecimal amount,
+                         String successUrl, String failUrl, String idempotencyKey,
                          LocalDateTime expiresAt) {
         validateIntentId(intentId);
         validateOrderId(orderId);
@@ -76,7 +52,7 @@ public class PaymentIntent extends BaseEntity {
         validateUrls(successUrl, failUrl);
         validateIdempotencyKey(idempotencyKey);
         validateExpiresAt(expiresAt);
-        
+
         this.intentId = intentId;
         this.orderId = orderId;
         this.amount = amount;
@@ -86,20 +62,8 @@ public class PaymentIntent extends BaseEntity {
         this.expiresAt = expiresAt;
     }
 
-    /**
-     * 결제 의도 생성 (팩토리 메서드)
-     * 
-     * @param intentId 의도 ID
-     * @param orderId 주문 ID
-     * @param amount 결제 금액
-     * @param successUrl 성공 URL
-     * @param failUrl 실패 URL
-     * @param idempotencyKey 멱등성 키
-     * @param ttlSeconds TTL (초)
-     * @return 생성된 PaymentIntent 엔티티
-     */
-    public static PaymentIntent create(String intentId, Long orderId, BigDecimal amount, 
-                                     String successUrl, String failUrl, String idempotencyKey, 
+    public static PaymentIntent create(String intentId, Long orderId, BigDecimal amount,
+                                     String successUrl, String failUrl, String idempotencyKey,
                                      long ttlSeconds) {
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(ttlSeconds);
         return PaymentIntent.builder()
@@ -113,14 +77,9 @@ public class PaymentIntent extends BaseEntity {
                 .build();
     }
 
-    /**
-     * 만료되었는지 확인
-     */
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);
     }
-
-    // ==================== 검증 메서드 ====================
 
     private void validateIntentId(String intentId) {
         if (intentId == null || intentId.trim().isEmpty()) {
@@ -161,3 +120,5 @@ public class PaymentIntent extends BaseEntity {
         }
     }
 }
+
+
