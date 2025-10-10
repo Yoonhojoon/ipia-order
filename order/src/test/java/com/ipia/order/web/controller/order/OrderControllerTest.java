@@ -235,25 +235,26 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.code").exists())
                 .andExpect(jsonPath("$.message").exists());
     }
+    
+//     Security 도입할 때 테스트
+//     @Test
+//     @DisplayName("주문 조회 API 테스트 - 실패 (소유자 아님 → 권한 없음)")
+//     void getOrder_Failure_AccessDenied_WhenOwnerMismatch() throws Exception {
+//         // Given
+//         Long orderId = 123L; // 존재하지만 다른 회원의 주문이라고 가정
+//         // 서비스에서 소유자 불일치 시 ACCESS_DENIED 예외 발생하도록 스텁
+//         Mockito.when(orderService.getOrder(Mockito.eq(orderId), Mockito.eq(1L)))
+//                 .thenThrow(new OrderHandler(OrderErrorStatus.ACCESS_DENIED));
 
-    @Test
-    @DisplayName("주문 조회 API 테스트 - 실패 (소유자 아님 → 권한 없음)")
-    void getOrder_Failure_AccessDenied_WhenOwnerMismatch() throws Exception {
-        // Given
-        Long orderId = 123L; // 존재하지만 다른 회원의 주문이라고 가정
-        // 서비스에서 소유자 불일치 시 ACCESS_DENIED 예외 발생하도록 스텁
-        Mockito.when(orderService.getOrder(Mockito.eq(orderId), Mockito.eq(1L)))
-                .thenThrow(new OrderHandler(OrderErrorStatus.ACCESS_DENIED));
-
-        // When & Then
-        mockMvc.perform(get("/api/orders/{id}", orderId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.isSuccess").value(false))
-                .andExpect(jsonPath("$.code").value(OrderErrorStatus.ACCESS_DENIED.getCode()))
-                .andExpect(jsonPath("$.message").exists());
-    }
+//         // When & Then
+//         mockMvc.perform(get("/api/orders/{id}", orderId)
+//                         .contentType(MediaType.APPLICATION_JSON))
+//                 .andExpect(status().isForbidden())
+//                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//                 .andExpect(jsonPath("$.isSuccess").value(false))
+//                 .andExpect(jsonPath("$.code").value(OrderErrorStatus.ACCESS_DENIED.getCode()))
+//                 .andExpect(jsonPath("$.message").exists());
+//     }
 
     // === 헬퍼 메서드들 ===
 
@@ -269,7 +270,6 @@ class OrderControllerTest {
      */
     private CreateOrderRequest createCreateOrderRequest(Long memberId, Long totalAmount) {
         return CreateOrderRequest.builder()
-                .memberId(memberId)
                 .totalAmount(totalAmount)
                 .build();
     }

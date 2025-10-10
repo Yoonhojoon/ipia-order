@@ -1,8 +1,10 @@
 package com.ipia.order.web.controller.payment;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -12,9 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ipia.order.common.exception.ApiErrorCodeExample;
 import com.ipia.order.common.exception.ApiErrorCodeExamples;
 import com.ipia.order.common.exception.ApiResponse;
+import com.ipia.order.common.exception.order.OrderHandler;
+import com.ipia.order.common.exception.order.status.OrderErrorStatus;
 import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import com.ipia.order.common.exception.payment.status.PaymentSuccessStatus;
+import com.ipia.order.common.security.CurrentUser;
+import com.ipia.order.order.domain.Order;
+import com.ipia.order.order.service.OrderService;
 import com.ipia.order.payment.service.PaymentService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -27,9 +35,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final OrderService orderService;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, OrderService orderService) {
         this.paymentService = paymentService;
+        this.orderService = orderService;
     }
 
     @Operation(summary = "결제 의도 생성", description = "주문에 대한 결제 의도를 생성합니다.")
@@ -42,8 +52,14 @@ public class PaymentController {
             @ApiErrorCodeExample(value = PaymentErrorStatus.class, codes = {"INVALID_AMOUNT", "INVALID_SUCCESS_URL", "INVALID_FAIL_URL"})
     })
     @PostMapping("/intent")
-    public ResponseEntity<ApiResponse<IntentResponse>> createIntent(@RequestBody IntentRequest request,
-                                                      @RequestHeader(name = "Idempotency-Key") String idempotencyKey) {
+    public ResponseEntity<ApiResponse<IntentResponse>> createIntent(
+            @RequestBody IntentRequest request,
+            @RequestHeader(name = "Idempotency-Key") String idempotencyKey,
+            @AuthenticationPrincipal CurrentUser user) {
+        
+        // 주문 소유자 확인
+        validateOrderOwnership(request.orderId(), user.getMemberId());
+        
         String intentId = paymentService.createIntent(
                 request.orderId(),
                 request.amount(),
@@ -65,8 +81,14 @@ public class PaymentController {
             @ApiErrorCodeExample(value = PaymentErrorStatus.class, codes = {"PAYMENT_AMOUNT_MISMATCH", "PAYMENT_CANNOT_APPROVE", "DUPLICATE_PAYMENT_APPROVAL"})
     })
     @PostMapping("/confirm")
-    public ResponseEntity<ApiResponse<ApproveResponse>> approve(@RequestBody ApproveRequest request,
-                                                   @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey) {
+    public ResponseEntity<ApiResponse<ApproveResponse>> approve(
+            @RequestBody ApproveRequest request,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal CurrentUser user) {
+        
+        // 주문 소유자 확인
+        validateOrderOwnership(request.orderId(), user.getMemberId());
+        
         Long paymentId = paymentService.approve(
                 request.intentId(),
                 request.paymentKey(),
@@ -86,7 +108,13 @@ public class PaymentController {
             @ApiErrorCodeExample(value = PaymentErrorStatus.class, codes = {"PAYMENT_CANNOT_CANCEL", "CANCEL_AMOUNT_EXCEEDED", "INVALID_CANCEL_AMOUNT"})
     })
     @PostMapping("/cancel")
-    public ResponseEntity<ApiResponse<Void>> cancel(@RequestBody CancelRequest request) {
+    public ResponseEntity<ApiResponse<Void>> cancel(
+            @RequestBody CancelRequest request,
+            @AuthenticationPrincipal CurrentUser user) {
+        
+        // 결제를 통해 주문 소유자 확인 (PaymentService에서 주문 정보 조회 후 검증)
+        // TODO: PaymentService에 주문 소유자 검증 로직 추가 필요
+        
         paymentService.cancel(request.paymentKey(), request.cancelAmount(), request.reason());
         return ApiResponse.onSuccess(PaymentSuccessStatus.PAYMENT_CANCELED);
     }
@@ -100,8 +128,14 @@ public class PaymentController {
             @ApiErrorCodeExample(value = PaymentErrorStatus.class, codes = {"PAYMENT_AMOUNT_MISMATCH"})
     })
     @PostMapping("/verify")
-    public ResponseEntity<ApiResponse<Void>> verify(@RequestBody VerifyRequest request,
-                                       @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey) {
+    public ResponseEntity<ApiResponse<Void>> verify(
+            @RequestBody VerifyRequest request,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal CurrentUser user) {
+        
+        // 주문 소유자 확인
+        validateOrderOwnership(request.orderId(), user.getMemberId());
+        
         paymentService.verify(
                 request.intentId(),
                 request.paymentKey(),
@@ -110,6 +144,16 @@ public class PaymentController {
                 idempotencyKey
         );
         return ApiResponse.onSuccess(PaymentSuccessStatus.PAYMENT_VERIFIED);
+    }
+    
+    /**
+     * 주문 소유자 확인 헬퍼 메서드
+     */
+    private void validateOrderOwnership(Long orderId, Long memberId) {
+        Optional<Order> orderOptional = orderService.getOrder(orderId, memberId);
+        if (orderOptional.isEmpty()) {
+            throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
+        }
     }
 
     public record IntentRequest(long orderId, BigDecimal amount, String successUrl, String failUrl) {}

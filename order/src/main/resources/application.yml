@@ -22,9 +22,9 @@ server:
 logging:
   level:
     com.ipia.order: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
 
 toss:
   baseUrl: https://api.tosspayments.com
-  secretKey: test_sk_xxx
+  secretKey: ${TOSS_SECRETKEY}
   enableRealCall: true
