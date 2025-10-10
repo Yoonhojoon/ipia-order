@@ -270,7 +270,6 @@ class OrderControllerTest {
      */
     private CreateOrderRequest createCreateOrderRequest(Long memberId, Long totalAmount) {
         return CreateOrderRequest.builder()
-                .memberId(memberId)
                 .totalAmount(totalAmount)
                 .build();
     }

@@ -16,7 +16,6 @@ import com.ipia.order.member.domain.Member;
 import java.time.LocalDateTime;
 
 @DataJpaTest
-@EnableJpaAuditing
 @DisplayName("멤버 Repository 테스트")
 class MemberRepositoryTest {
 
