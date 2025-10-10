@@ -31,3 +31,9 @@ jwt:
   secret: test-secret-test-test-test-test-test
   access-token-expiration: 3600000
   refresh-token-expiration: 2592000000
+
+
+toss:
+  baseUrl: https://api.tosspayments.com
+  secretKey: test_sk_xxx
+  enableRealCall: true

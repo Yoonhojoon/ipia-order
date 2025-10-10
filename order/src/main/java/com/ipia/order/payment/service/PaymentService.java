@@ -10,9 +10,9 @@ public interface PaymentService {
 
     String createIntent(long orderId, BigDecimal amount, String successUrl, String failUrl, String idempotencyKey);
 
-    void verify(String intentId, String paymentKey, long orderId, BigDecimal amount);
+    void verify(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey);
 
-    Long approve(String intentId, String paymentKey, long orderId, BigDecimal amount);
+    Long approve(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey);
 
     void cancel(String paymentKey, BigDecimal cancelAmount, String reason);
 }
