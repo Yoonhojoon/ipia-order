@@ -8,7 +8,6 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 import java.time.Duration;
 import jakarta.annotation.PostConstruct;
@@ -36,10 +35,7 @@ public class RedisConfig {
                 .disableCachingNullValues();
     }
 
-    @Bean
-    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
-        return new StringRedisTemplate(connectionFactory);
-    }
+
 
     @PostConstruct
     public void checkRedisConnection() {
