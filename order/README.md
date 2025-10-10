@@ -51,7 +51,9 @@ ipia-order/
 
 docker-compose up -d 하면 작동합니다.
 
-.env로 저장하고 사용해주세요. (편의를 위해 readme에 작성성)
+.env로 저장하고 사용해주세요. (편의를 위해 readme에 작성)
+
+
 TOSS_SECRETKEY=test_sk_mBZ1gQ4YVXKK46Dx47LZ3l2KPoqN
 SPRING_DATA_REDIS_PORT=6379
 SPRING_PROFILES_ACTIVE=dev
