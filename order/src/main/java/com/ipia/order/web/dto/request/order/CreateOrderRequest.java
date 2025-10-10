@@ -9,19 +9,13 @@ import lombok.NoArgsConstructor;
 
 /**
  * 주문 생성 요청 DTO
+ * memberId는 JWT 토큰에서 추출하므로 요청 본문에서 제외
  */
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateOrderRequest {
-
-    /**
-     * 회원 ID
-     */
-    @NotNull(message = "회원 ID는 필수입니다")
-    @Min(value = 1, message = "회원 ID는 1 이상이어야 합니다")
-    private Long memberId;
 
     /**
      * 주문 총액

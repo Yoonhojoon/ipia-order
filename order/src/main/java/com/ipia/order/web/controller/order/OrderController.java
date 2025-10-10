@@ -1,18 +1,33 @@
 package com.ipia.order.web.controller.order;
 
+import java.util.Optional;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.ipia.order.common.exception.ApiErrorCodeExample;
 import com.ipia.order.common.exception.ApiErrorCodeExamples;
 import com.ipia.order.common.exception.ApiResponse;
 import com.ipia.order.common.exception.order.OrderHandler;
 import com.ipia.order.common.exception.order.status.OrderErrorStatus;
 import com.ipia.order.common.exception.order.status.OrderSuccessStatus;
+import com.ipia.order.common.security.CurrentUser;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.order.domain.Order;
 import com.ipia.order.order.service.OrderService;
-import com.ipia.order.web.dto.request.order.CreateOrderRequest;
 import com.ipia.order.web.dto.request.order.CancelOrderRequest;
-import com.ipia.order.web.dto.response.order.OrderResponse;
+import com.ipia.order.web.dto.request.order.CreateOrderRequest;
 import com.ipia.order.web.dto.response.order.OrderListResponse;
-import com.ipia.order.common.security.CurrentUser;
+import com.ipia.order.web.dto.response.order.OrderResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,11 +36,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-
-import java.util.Optional;
 
 /**
  * 주문 관리 컨트롤러
@@ -55,10 +65,14 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
             @Valid @RequestBody CreateOrderRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 토큰에서 사용자 ID 추출하여 본인만 주문 생성 가능
+        Long memberId = user.getMemberId();
         
         Order order = orderService.createOrder(
-            request.getMemberId(), 
+            memberId, 
             request.getTotalAmount(), 
             idempotencyKey
         );
@@ -115,7 +129,13 @@ public class OrderController {
             @Parameter(description = "회원 ID", example = "1") @RequestParam(value = "memberId", required = false) Long memberId,
             @Parameter(description = "주문 상태", example = "PENDING") @RequestParam(value = "status", required = false) String status,
             @Parameter(description = "페이지 번호", example = "0") @RequestParam(value = "page", defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기", example = "10") @RequestParam(value = "size", defaultValue = "10") int size) {
+            @Parameter(description = "페이지 크기", example = "10") @RequestParam(value = "size", defaultValue = "10") int size,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 일반 사용자는 본인 주문만 조회, 관리자는 모든 주문 조회 가능
+        if (!isAdmin(user)) {
+            memberId = user.getMemberId(); // 본인 ID로 강제 설정
+        }
         
         OrderListResponse response = orderService.listOrders(memberId, status, page, size);
         return ApiResponse.onSuccess(OrderSuccessStatus.ORDERS_FOUND, response);
@@ -140,11 +160,27 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @Parameter(description = "주문 ID", example = "1") @PathVariable("id") Long id,
             @Valid @RequestBody CancelOrderRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 주문 소유자 확인 (본인 주문만 취소 가능)
+        Long memberId = user.getMemberId();
+        Optional<Order> orderOptional = orderService.getOrder(id, memberId);
+        
+        if (orderOptional.isEmpty()) {
+            throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
+        }
         
         Order order = orderService.cancelOrder(id, request.getReason());
         
         OrderResponse response = OrderResponse.from(order);
         return ApiResponse.onSuccess(OrderSuccessStatus.ORDER_CANCELED, response);
+    }
+    
+    /**
+     * 관리자 권한 확인 헬퍼 메서드
+     */
+    private boolean isAdmin(CurrentUser user) {
+        return MemberRole.ADMIN.getCode().equals(user.getRole());
     }
 }
