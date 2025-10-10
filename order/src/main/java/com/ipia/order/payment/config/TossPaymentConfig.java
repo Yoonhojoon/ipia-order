@@ -1,7 +1,6 @@
 package com.ipia.order.payment.config;
 
-import java.time.Duration;
-
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -10,6 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
  * Toss Payments API 연동 설정
  */
 @Configuration
+@EnableConfigurationProperties(TossProperties.class)
 public class TossPaymentConfig {
 
     @Bean
