@@ -32,7 +32,7 @@ Spring Boot 기반 주문·결제 서버 (Intern 과제)
 - Web (MVC, WebFlux-Client), Data JPA, Validation
 - Security, JWT (jjwt)
 - H2 (dev/test), Redis, Spring Cache
-- Springdoc OpenAPI, Actuator
+- Springdoc OpenAPI
 - Gradle, JUnit 5
 
 ### 프로젝트 구조
