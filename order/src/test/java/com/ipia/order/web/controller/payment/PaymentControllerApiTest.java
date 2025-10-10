@@ -45,17 +45,18 @@ class PaymentControllerApiTest {
                 "\"successUrl\":\"https://success\"," +
                 "\"failUrl\":\"https://fail\"" +
                 "}";
-        when(paymentService.createIntent(eq(1L), eq(new BigDecimal("10000")), eq("https://success"), eq("https://fail")))
+        when(paymentService.createIntent(eq(1L), eq(new BigDecimal("10000")), eq("https://success"), eq("https://fail"), eq("idem-1")))
                 .thenReturn("intent_123");
 
         // when/then
         mockMvc.perform(post("/api/payments/intent")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reqJson))
+                        .content(reqJson)
+                        .header("Idempotency-Key", "idem-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.intentId").isString());
 
-        verify(paymentService).createIntent(1L, new BigDecimal("10000"), "https://success", "https://fail");
+        verify(paymentService).createIntent(1L, new BigDecimal("10000"), "https://success", "https://fail", "idem-1");
     }
 
     @Test

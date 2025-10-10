@@ -8,7 +8,7 @@ import java.math.BigDecimal;
  */
 public interface PaymentService {
 
-    String createIntent(long orderId, BigDecimal amount, String successUrl, String failUrl);
+    String createIntent(long orderId, BigDecimal amount, String successUrl, String failUrl, String idempotencyKey);
 
     void verify(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey);
 
