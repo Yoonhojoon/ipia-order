@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import com.ipia.order.common.security.CurrentUser;
 
 /**
  * JWT 인증 필터
@@ -47,9 +48,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String role = jwtUtil.getRoleFromToken(token);
                 
                 // Spring Security 인증 객체 생성
+                CurrentUser principal = new CurrentUser(userId, email, role);
                 UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(
-                        email,
+                        principal,
                         null,
                         Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
                     );

@@ -39,20 +39,26 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public String createIntent(long orderId, BigDecimal amount, String successUrl, String failUrl, String idempotencyKey) {
-        log.info("결제 의도 생성 요청: orderId={}, amount={}, idempotencyKey={}", orderId, amount, idempotencyKey);
-        
+    public String createIntent(long orderId, BigDecimal amount, String successUrl, String failUrl) {
+        log.info("결제 의도 생성 요청: orderId={}, amount={}", orderId, amount);
+
         // 입력값 검증
-        validateCreateIntentParams(orderId, amount, successUrl, failUrl, idempotencyKey);
-        
-        // 의도 ID 생성
-        String intentId = generateIntentId();
-        
-        // 의도 저장 (DB 원본)
-        paymentIntentService.store(intentId, orderId, amount, successUrl, failUrl, idempotencyKey, INTENT_TTL_SECONDS);
-        
-        log.info("결제 의도 생성 완료: intentId={}, orderId={}, amount={}", intentId, orderId, amount);
-        return intentId;
+        validateCreateIntentParams(orderId, amount, successUrl, failUrl);
+
+        // 멱등키를 요청 파라미터로부터 파생 생성 (동일 주문/금액 조합 재시도 보호)
+        String derivedIdemKey = "intent:" + orderId + ":" + amount;
+
+        return idempotencyKeyService.executeWithIdempotency(
+                "POST /payments/intent",
+                derivedIdemKey,
+                String.class,
+                () -> {
+                    String intentId = generateIntentId();
+                    paymentIntentService.store(intentId, orderId, amount, successUrl, failUrl, derivedIdemKey, INTENT_TTL_SECONDS);
+                    log.info("결제 의도 생성 완료: intentId={}, orderId={}, amount={}", intentId, orderId, amount);
+                    return intentId;
+                }
+        );
     }
 
     @Override
@@ -165,7 +171,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     // ==================== 검증 메서드 ====================
 
-    private void validateCreateIntentParams(long orderId, BigDecimal amount, String successUrl, String failUrl, String idempotencyKey) {
+    private void validateCreateIntentParams(long orderId, BigDecimal amount, String successUrl, String failUrl) {
         if (orderId <= 0) {
             throw new PaymentHandler(PaymentErrorStatus.ORDER_ID_REQUIRED);
         }
@@ -177,9 +183,6 @@ public class PaymentServiceImpl implements PaymentService {
         }
         if (!StringUtils.hasText(failUrl)) {
             throw new PaymentHandler(PaymentErrorStatus.FAIL_URL_REQUIRED);
-        }
-        if (!StringUtils.hasText(idempotencyKey)) {
-            throw new PaymentHandler(PaymentErrorStatus.INVALID_IDEMPOTENCY_KEY);
         }
     }
 

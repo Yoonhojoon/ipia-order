@@ -56,7 +56,7 @@ class PaymentServiceImplTest {
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
-
+    
 
     @Nested
     @DisplayName("approve")
@@ -248,7 +248,7 @@ class PaymentServiceImplTest {
         @DisplayName("음수/0 금액으로 의도 생성 시 예외")
         void invalidAmount_shouldThrow() {
             assertThatThrownBy(() -> paymentService.createIntent(
-                    1L, new BigDecimal("0"), "s", "f", "idem"
+                    1L, new BigDecimal("0"), "s", "f"
             ))
                     .isInstanceOf(PaymentHandler.class);
         }
@@ -257,8 +257,13 @@ class PaymentServiceImplTest {
         @DisplayName("성공: 정상 의도 생성")
         void success_shouldReturnIntentId() {
             // when
+                when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                        .thenAnswer(inv -> {
+                            java.util.function.Supplier<?> op = inv.getArgument(3);
+                            return op.get();
+                        });
             String result = paymentService.createIntent(
-                    1L, new BigDecimal("10000"), "http://success", "http://fail", "idem-key"
+                    1L, new BigDecimal("10000"), "http://success", "http://fail"
             );
             
             // then
@@ -269,7 +274,7 @@ class PaymentServiceImplTest {
                 }
             }).doesNotThrowAnyException();
             verify(paymentIntentService).store(anyString(), eq(1L), eq(new BigDecimal("10000")), 
-                    eq("http://success"), eq("http://fail"), eq("idem-key"), eq(1800L));
+                    eq("http://success"), eq("http://fail"), anyString(), eq(1800L));
         }
     }
 

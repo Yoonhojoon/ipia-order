@@ -1,6 +1,7 @@
 package com.ipia.order.order.service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -10,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+ 
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ipia.order.common.exception.order.OrderHandler;
@@ -74,11 +76,16 @@ public class OrderServiceImpl implements OrderService {
         return created;
     }
 
+ 
+
     @Override
-    public Optional<Order> getOrder(long orderId) {
-        log.info("[Order] 주문 단건 조회 요청: orderId={}", orderId);
-        findOrderById(orderId); // 주문 존재 여부만 확인
-        throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
+    public Optional<Order> getOrder(long orderId, long requesterMemberId) {
+        log.info("[Order] 주문 단건 조회(소유자 확인) 요청: orderId={}, requesterId={}", orderId, requesterMemberId);
+        Order order = findOrderById(orderId);
+        if (!Objects.equals(order.getMemberId(), requesterMemberId)) {
+            throw new OrderHandler(OrderErrorStatus.ACCESS_DENIED);
+        }
+        return Optional.of(order);
     }
 
     @Override
@@ -249,4 +256,6 @@ public class OrderServiceImpl implements OrderService {
             }
         }
     }
+
+    // 인증 의존 제거: 소유자 검증은 컨트롤러 계층에서 requesterId를 받아 처리한다.
 }

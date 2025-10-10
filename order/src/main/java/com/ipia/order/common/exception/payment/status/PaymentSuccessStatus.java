@@ -6,6 +6,9 @@ import com.ipia.order.common.exception.general.status.SuccessResponse;
 
 public enum PaymentSuccessStatus implements SuccessResponse {
 
+    // 결제 의도 생성
+    INTENT_CREATED(HttpStatus.OK, "PAYMENT2000", "결제 임시 객체가 생성되었습니다."),
+
     // 결제 승인
     PAYMENT_APPROVED(HttpStatus.OK, "PAYMENT2001", "결제가 성공적으로 승인되었습니다."),
     
@@ -26,7 +29,10 @@ public enum PaymentSuccessStatus implements SuccessResponse {
     WEBHOOK_PROCESSED(HttpStatus.OK, "PAYMENT2007", "웹훅이 성공적으로 처리되었습니다."),
     
     // 결제 상태 동기화
-    PAYMENT_STATUS_SYNCED(HttpStatus.OK, "PAYMENT2008", "결제 상태가 성공적으로 동기화되었습니다.");
+    PAYMENT_STATUS_SYNCED(HttpStatus.OK, "PAYMENT2008", "결제 상태가 성공적으로 동기화되었습니다."),
+
+    // 결제 검증 완료
+    PAYMENT_VERIFIED(HttpStatus.OK, "PAYMENT2009", "결제가 성공적으로 검증되었습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

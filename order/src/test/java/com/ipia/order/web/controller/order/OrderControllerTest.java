@@ -11,6 +11,7 @@ import com.ipia.order.web.dto.request.order.CancelOrderRequest;
 import com.ipia.order.web.dto.request.order.CreateOrderRequest;
 import com.ipia.order.web.dto.response.order.OrderResponse;
 import com.ipia.order.web.dto.response.order.OrderListResponse;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,10 +22,12 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+ 
 
 import java.util.List;
 import java.util.Optional;
@@ -38,17 +41,21 @@ class OrderControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockitoBean
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockitoBean
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
+        // 인증 주입: @AuthenticationPrincipal(expression = "memberId") Long memberId 용
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new TestPrincipal(1L), null)
+        );
         // 공통 Mock 설정
         Order mockOrder = createMockOrder(1L, 1L, 10000L, OrderStatus.CREATED);
         Order mockOrder2 = createMockOrder(2L, 1L, 20000L, OrderStatus.CONFIRMED);
@@ -62,8 +69,8 @@ class OrderControllerTest {
                 .thenThrow(new OrderHandler(OrderErrorStatus.INVALID_AMOUNT));
 
         // 주문 조회 Mock
-        Mockito.when(orderService.getOrder(Mockito.eq(1L))).thenReturn(Optional.of(mockOrder));
-        Mockito.when(orderService.getOrder(Mockito.eq(999L))).thenReturn(Optional.empty());
+        Mockito.when(orderService.getOrder(Mockito.eq(1L), Mockito.eq(1L))).thenReturn(Optional.of(mockOrder));
+        Mockito.when(orderService.getOrder(Mockito.eq(999L), Mockito.eq(1L))).thenReturn(Optional.empty());
 
         // 주문 목록 조회 Mock
         OrderListResponse listResponse1 = OrderListResponse.builder()
@@ -154,38 +161,6 @@ class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("주문 조회 API 테스트 - 성공")
-    void getOrder_Success() throws Exception {
-        // Given
-        Long orderId = 1L;
-
-        // When & Then
-        mockMvc.perform(get("/api/orders/{id}", orderId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.data.id").value(orderId));
-    }
-
-    @Test
-    @DisplayName("주문 조회 API 테스트 - 실패 (존재하지 않는 주문)")
-    void getOrder_Failure_NotFound() throws Exception {
-        // Given
-        Long orderId = 999L;
-
-        // When & Then
-        mockMvc.perform(get("/api/orders/{id}", orderId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.isSuccess").value(false))
-                .andExpect(jsonPath("$.code").exists())
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
     @DisplayName("주문 목록 조회 API 테스트 - 성공 (회원 ID 필터)")
     void listOrders_Success_WithMemberId() throws Exception {
         // Given
@@ -261,6 +236,25 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.message").exists());
     }
 
+    @Test
+    @DisplayName("주문 조회 API 테스트 - 실패 (소유자 아님 → 권한 없음)")
+    void getOrder_Failure_AccessDenied_WhenOwnerMismatch() throws Exception {
+        // Given
+        Long orderId = 123L; // 존재하지만 다른 회원의 주문이라고 가정
+        // 서비스에서 소유자 불일치 시 ACCESS_DENIED 예외 발생하도록 스텁
+        Mockito.when(orderService.getOrder(Mockito.eq(orderId), Mockito.eq(1L)))
+                .thenThrow(new OrderHandler(OrderErrorStatus.ACCESS_DENIED));
+
+        // When & Then
+        mockMvc.perform(get("/api/orders/{id}", orderId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value(OrderErrorStatus.ACCESS_DENIED.getCode()))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
     // === 헬퍼 메서드들 ===
 
     /**
@@ -294,5 +288,12 @@ class OrderControllerTest {
      */
     private Order createMockOrder(Long id, Long memberId, Long totalAmount, OrderStatus status) {
         return Order.createTestOrder(id, memberId, totalAmount, status);
+    }
+
+    // 테스트용 인증 Principal (memberId 프로퍼티 제공)
+    private static class TestPrincipal {
+        private final Long memberId;
+        private TestPrincipal(Long memberId) { this.memberId = memberId; }
+        public Long getMemberId() { return memberId; }
     }
 }

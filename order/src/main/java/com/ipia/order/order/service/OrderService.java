@@ -1,13 +1,9 @@
 package com.ipia.order.order.service;
 
 import com.ipia.order.order.domain.Order;
-import com.ipia.order.order.enums.OrderStatus;
-import com.ipia.order.web.dto.response.order.OrderResponse;
 import com.ipia.order.web.dto.response.order.OrderListResponse;
-import org.springframework.data.domain.Page;
 import org.springframework.lang.Nullable;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -35,15 +31,11 @@ public interface OrderService {
      */
     Order createOrder(long memberId, long totalAmount, @Nullable String idempotencyKey);
     
+
     /**
-     * 주문 단건 조회
-     * 
-     * @param orderId 주문 ID
-     * @return 주문 정보 (없으면 Optional.empty())
-     * @throws OrderHandler 존재하지 않는 주문 (OrderErrorStatus.ORDER_NOT_FOUND)
-     * @throws OrderHandler 권한 없는 주문 조회 (OrderErrorStatus.ACCESS_DENIED)
+     * 소유자 검증을 포함한 주문 조회
      */
-    Optional<Order> getOrder(long orderId);
+    Optional<Order> getOrder(long orderId, long requesterMemberId);
     
     /**
      * 주문 목록 조회 (페이지네이션)
