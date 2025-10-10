@@ -248,7 +248,7 @@ class PaymentServiceImplTest {
         @DisplayName("음수/0 금액으로 의도 생성 시 예외")
         void invalidAmount_shouldThrow() {
             assertThatThrownBy(() -> paymentService.createIntent(
-                    1L, new BigDecimal("0"), "s", "f"
+                    1L, new BigDecimal("0"), "s", "f", "test-idem-key"
             ))
                     .isInstanceOf(PaymentHandler.class);
         }
@@ -263,7 +263,7 @@ class PaymentServiceImplTest {
                             return op.get();
                         });
             String result = paymentService.createIntent(
-                    1L, new BigDecimal("10000"), "http://success", "http://fail"
+                    1L, new BigDecimal("10000"), "http://success", "http://fail", "test-idem-key"
             );
             
             // then
