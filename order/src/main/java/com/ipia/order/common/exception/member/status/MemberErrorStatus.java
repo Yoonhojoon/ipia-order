@@ -2,9 +2,10 @@ package com.ipia.order.common.exception.member.status;
 
 
 
+import org.springframework.http.HttpStatus;
+
 import com.ipia.order.common.exception.ExplainError;
 import com.ipia.order.common.exception.general.status.ErrorResponse;
-import org.springframework.http.HttpStatus;
 
 public enum MemberErrorStatus implements ErrorResponse {
 
@@ -29,6 +30,8 @@ public enum MemberErrorStatus implements ErrorResponse {
     PASSWORD_POLICY_VIOLATION(HttpStatus.BAD_REQUEST, "MEMBER4008", "새 비밀번호가 정책을 위반했습니다."),
     @ExplainError("권한이 올바르지 않은 회원")
     INVALID_ROLE(HttpStatus.BAD_REQUEST, "MEMBER4009", "유효하지 않은 권한 코드입니다."),
+    @ExplainError("접근 권한 없음")
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "MEMBER4017", "해당 리소스에 대한 접근 권한이 없습니다."),
     
     // 입력값 검증 관련
     @ExplainError("회원 이름이 필수 아님")

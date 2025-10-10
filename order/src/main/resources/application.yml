@@ -22,7 +22,7 @@ server:
 logging:
   level:
     com.ipia.order: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
 
 toss:
   baseUrl: https://api.tosspayments.com

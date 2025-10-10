@@ -28,7 +28,7 @@ Spring Boot 기반 주문·결제 서버 (Intern 과제)
 ### 기술 스택
 - Java 17, Spring Boot 3.5.x
 - Web (MVC, WebFlux-Client), Data JPA, Validation
-- Security, OAuth2 Client, JWT (jjwt)
+- Security, JWT (jjwt)
 - H2 (dev/test), Redis, Spring Cache
 - Springdoc OpenAPI, Actuator
 - Gradle, JUnit 5
@@ -61,13 +61,23 @@ SPRING_DATA_REDIS_HOST=redis
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - H2 Console: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:testdb` )
 
+### 테스트 계정 (dev 프로파일)
+개발 편의를 위해 자동 생성되는 테스트 계정들입니다:
+- **관리자**: admin@local.dev / admin1234
+- **일반 사용자**: 
+  - user1@test.com / user1pass
+  - user2@test.com / user2pass
+  - user3@test.com / user3pass
+  - user4@test.com / user4pass
+  - user5@test.com / user5pass
+
 ### 환경/프로파일
 기본 설정은 `order/src/main/resources/application.yml` 을 참고하세요.
 - profiles: `dev`(기본), `test`, `prod (배포 가정하고)`
 - JPA: `ddl-auto=update`, SQL 포맷/로그 활성화
 - H2 Console 활성화 (dev)
 - 로깅 레벨: `com.ipia.order`, `org.springframework.security`
-- Toss Payments 설정: `toss.baseUrl`, `toss.secretKey`, `toss.enableRealCall`
+
 
 실운영 전환 시 유의사항:
 - `toss.secretKey` 는 환경변수/시크릿으로 주입하고, `enableRealCall=false` 로부터 점진 전환 권장

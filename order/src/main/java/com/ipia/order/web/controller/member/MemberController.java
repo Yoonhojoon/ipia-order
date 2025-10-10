@@ -1,15 +1,32 @@
 package com.ipia.order.web.controller.member;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.ipia.order.common.exception.ApiErrorCodeExample;
 import com.ipia.order.common.exception.ApiErrorCodeExamples;
 import com.ipia.order.common.exception.ApiResponse;
+import com.ipia.order.common.exception.member.MemberHandler;
 import com.ipia.order.common.exception.member.status.MemberErrorStatus;
 import com.ipia.order.common.exception.member.status.MemberSuccessStatus;
+import com.ipia.order.common.security.CurrentUser;
 import com.ipia.order.member.domain.Member;
+import com.ipia.order.member.enums.MemberRole;
 import com.ipia.order.member.service.MemberService;
 import com.ipia.order.web.dto.request.MemberPasswordRequest;
 import com.ipia.order.web.dto.request.MemberUpdateRequest;
 import com.ipia.order.web.dto.response.MemberResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,10 +35,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 회원 관리 컨트롤러
@@ -52,7 +65,14 @@ public class MemberController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MemberResponse>> findById(
-            @Parameter(description = "회원 ID", example = "1") @PathVariable("id") Long id) {
+            @Parameter(description = "회원 ID", example = "1") @PathVariable("id") Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 본인 정보 조회 또는 관리자만 접근 가능
+        if (!user.getMemberId().equals(id) && !isAdmin(user)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         Member member = memberService.findById(id).orElse(null);
         if (member == null) {
             return ApiResponse.onFailure(MemberErrorStatus.MEMBER_NOT_FOUND, (MemberResponse) null);
@@ -77,7 +97,14 @@ public class MemberController {
     })
     @GetMapping("/email/{email}")
     public ResponseEntity<ApiResponse<MemberResponse>> findByEmail(
-            @Parameter(description = "회원 이메일", example = "user@example.com") @PathVariable("email") String email) {
+            @Parameter(description = "회원 이메일", example = "user@example.com") @PathVariable("email") String email,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 본인 정보 조회 또는 관리자만 접근 가능
+        if (!user.getEmail().equals(email) && !isAdmin(user)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         Member member = memberService.findByEmail(email).orElse(null);
         if (member == null) {
             return ApiResponse.onFailure(MemberErrorStatus.MEMBER_NOT_FOUND, (MemberResponse) null);
@@ -96,7 +123,14 @@ public class MemberController {
                     content = @Content(schema = @Schema(implementation = MemberResponse.class)))
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MemberResponse>>> findAll() {
+    public ResponseEntity<ApiResponse<List<MemberResponse>>> findAll(
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 관리자만 전체 회원 목록 조회 가능
+        if (!isAdmin(user)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         List<Member> members = memberService.findAll();
         List<MemberResponse> responses = members.stream()
                 .map(MemberResponse::from)
@@ -119,7 +153,14 @@ public class MemberController {
     })
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<MemberResponse>>> findByName(
-            @Parameter(description = "검색할 회원 이름", example = "홍길동") @RequestParam("name") String name) {
+            @Parameter(description = "검색할 회원 이름", example = "홍길동") @RequestParam("name") String name,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 관리자만 회원 검색 가능
+        if (!isAdmin(user)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         List<Member> members = memberService.findByName(name);
         List<MemberResponse> responses = members.stream()
                 .map(MemberResponse::from)
@@ -144,7 +185,14 @@ public class MemberController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MemberResponse>> update(
             @Parameter(description = "회원 ID", example = "1") @PathVariable("id") Long id,
-            @Valid @RequestBody MemberUpdateRequest request) {
+            @Valid @RequestBody MemberUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 본인만 정보 수정 가능
+        if (!user.getMemberId().equals(id)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         Member member = memberService.updateNickname(id, request.getName());
         MemberResponse response = MemberResponse.from(member);
         return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_UPDATED, response);
@@ -166,7 +214,14 @@ public class MemberController {
     @PutMapping("/{id}/password")
     public ResponseEntity<ApiResponse<Void>> updatePassword(
             @Parameter(description = "회원 ID", example = "1") @PathVariable("id") Long id,
-            @Valid @RequestBody MemberPasswordRequest request) {
+            @Valid @RequestBody MemberPasswordRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 본인만 비밀번호 변경 가능
+        if (!user.getMemberId().equals(id)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         memberService.updatePassword(id, request.getCurrentPassword(), request.getNewPassword());
         return ApiResponse.onSuccess(MemberSuccessStatus.PASSWORD_UPDATED);
     }
@@ -186,8 +241,22 @@ public class MemberController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> withdraw(
-            @Parameter(description = "회원 ID", example = "1") @PathVariable("id") Long id) {
+            @Parameter(description = "회원 ID", example = "1") @PathVariable("id") Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal CurrentUser user) {
+        
+        // 본인만 탈퇴 가능
+        if (!user.getMemberId().equals(id)) {
+            throw new MemberHandler(MemberErrorStatus.ACCESS_DENIED);
+        }
+        
         memberService.withdraw(id);
         return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_WITHDRAWN);
+    }
+    
+    /**
+     * 관리자 권한 확인 헬퍼 메서드
+     */
+    private boolean isAdmin(CurrentUser user) {
+        return MemberRole.ADMIN.getCode().equals(user.getRole());
     }
 }
