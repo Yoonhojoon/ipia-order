@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,9 +16,11 @@ import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
 import com.ipia.order.payment.domain.Payment;
 import com.ipia.order.payment.enums.PaymentStatus;
 import com.ipia.order.payment.intent.service.PaymentIntentService;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -30,6 +33,7 @@ import com.ipia.order.payment.service.external.TossConfirmResponse;
 import com.ipia.order.payment.service.external.TossPaymentClient;
 import com.ipia.order.payment.domain.PaymentTestBuilder;
 import com.ipia.order.payment.repository.PaymentRepository;
+import com.ipia.order.idempotency.service.IdempotencyKeyService;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceImplTest {
@@ -46,8 +50,13 @@ class PaymentServiceImplTest {
     @Mock
     private OrderService orderService;
 
+    @Mock
+    private IdempotencyKeyService idempotencyKeyService;
+
     @InjectMocks
     private PaymentServiceImpl paymentService;
+
+
 
     @Nested
     @DisplayName("approve")
@@ -57,9 +66,16 @@ class PaymentServiceImplTest {
         void approve_amountMismatch_shouldThrow() {
             // given
             PaymentIntentService.PaymentIntentData intentData = new PaymentIntentService.PaymentIntentData(
-                    "intent-1", 1L, new BigDecimal("10000"), "http://success", "http://fail", "idem"
+                    "intent-1", 1L, new BigDecimal("10000"), "http://success", "http/fail", "idem"
             );
             when(paymentIntentService.get("intent-1")).thenReturn(intentData);
+            
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
             
             // when & then
             assertThatThrownBy(() -> paymentService.approve(
@@ -92,6 +108,13 @@ class PaymentServiceImplTest {
                     .build();
             when(paymentRepository.save(any())).thenReturn(savedPayment);
 
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
+
             // when
             Long paymentId = paymentService.approve(
                     "intent-ok", "paymentKey-ok", 1L, new BigDecimal("10000"), "idem"
@@ -99,9 +122,8 @@ class PaymentServiceImplTest {
 
             // then
             assertThatCode(() -> {
-                // 이미 실행된 결과를 확인
                 if (paymentId == null) {
-                    throw new RuntimeException("Payment ID should not be null");
+                    throw new PaymentHandler(PaymentErrorStatus.PAYMENT_CANNOT_APPROVE);
                 }
             }).doesNotThrowAnyException();
             verify(paymentIntentService).delete("intent-ok");
@@ -203,7 +225,7 @@ class PaymentServiceImplTest {
                     .orderId(1L)
                     .paidAmount(new BigDecimal("10000"))
                     .providerTxnId("paymentKey-ok")
-                    .status(com.ipia.order.payment.enums.PaymentStatus.APPROVED)
+                    .status(PaymentStatus.APPROVED)
                     .build();
             when(paymentRepository.findByProviderTxnId("paymentKey-ok")).thenReturn(Optional.of(payment));
             when(tossPaymentClient.cancel("paymentKey-ok", new BigDecimal("1000"), "고객요청"))
@@ -267,6 +289,13 @@ class PaymentServiceImplTest {
             existingPayment.approve(new BigDecimal("10000"));
             when(paymentRepository.findByOrderId(1L)).thenReturn(Optional.of(existingPayment));
             
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
+            
             // when & then
             assertThatThrownBy(() -> paymentService.approve(
                     "intent-approved", "paymentKey-abc", 1L, new BigDecimal("10000"), "idem"
@@ -278,6 +307,13 @@ class PaymentServiceImplTest {
         void invalidState_shouldThrow() {
             // given
             when(paymentIntentService.get("intent-canceled")).thenReturn(null);
+            
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
             
             // when & then
             assertThatThrownBy(() -> paymentService.approve(
@@ -299,6 +335,13 @@ class PaymentServiceImplTest {
             when(tossPaymentClient.confirm("paymentKey-4xx", "1", new BigDecimal("10000")))
                     .thenThrow(new PaymentHandler(PaymentErrorStatus.TOSS_API_ERROR));
             
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
+            
             // when & then
             assertThatThrownBy(() -> paymentService.approve(
                     "intent-4xx", "paymentKey-4xx", 1L, new BigDecimal("10000"), "idem"
@@ -319,10 +362,59 @@ class PaymentServiceImplTest {
             when(tossPaymentClient.confirm("paymentKey-5xx", "1", new BigDecimal("10000")))
                     .thenThrow(new PaymentHandler(PaymentErrorStatus.TOSS_NETWORK_ERROR));
             
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
+            
             // when & then
             assertThatThrownBy(() -> paymentService.approve(
                     "intent-5xx", "paymentKey-5xx", 1L, new BigDecimal("10000"), "idem"
             )).isInstanceOf(PaymentHandler.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("idempotency")
+    class IdempotencyTests {
+        @Test
+        @DisplayName("같은 멱등키로 두 번 승인 요청하면 같은 결과 반환하고 외부호출은 한 번만")
+        void approve_sameIdempotencyKey_returnsSameResult_and_callsOnce() {
+            // given
+            PaymentIntentService.PaymentIntentData intentData = new PaymentIntentService.PaymentIntentData(
+                    "intent-idem", 1L, new BigDecimal("10000"), "http://success", "http://fail", "idem"
+            );
+            when(paymentIntentService.get("intent-idem")).thenReturn(intentData);
+            when(paymentRepository.findByOrderId(1L)).thenReturn(Optional.empty());
+            when(tossPaymentClient.confirm("paymentKey-idem", "1", new BigDecimal("10000")))
+                    .thenReturn(new TossConfirmResponse("paymentKey-idem", "1", new BigDecimal("10000")));
+            Payment saved = PaymentTestBuilder.builder()
+                    .id(999L).orderId(1L).paidAmount(new BigDecimal("10000")).providerTxnId("paymentKey-idem").build();
+            when(paymentRepository.save(any())).thenReturn(saved);
+
+            final Long[] cached = new Long[1];
+            when(idempotencyKeyService.executeWithIdempotency(eq("POST /payments/approve"), eq("idem"), eq(Long.class), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        if (cached[0] == null) {
+                            cached[0] = (Long) op.get();
+                        }
+                        return cached[0];
+                    });
+
+            // when
+            Long first = paymentService.approve("intent-idem", "paymentKey-idem", 1L, new BigDecimal("10000"), "idem");
+            Long second = paymentService.approve("intent-idem", "paymentKey-idem", 1L, new BigDecimal("10000"), "idem");
+
+            // then
+            Assertions.assertThat(second).isEqualTo(first);
+            // 멱등성 처리로 인해 실제 로직은 한 번만 실행됨
+            verify(tossPaymentClient, times(1)).confirm("paymentKey-idem", "1", new BigDecimal("10000"));
+            verify(paymentRepository, times(1)).save(any());
+            verify(paymentIntentService, times(1)).delete("intent-idem");
+            verify(orderService, times(1)).handlePaymentApproved(1L);
         }
     }
 
@@ -436,6 +528,13 @@ class PaymentServiceImplTest {
             // TossPaymentClient에서 예외 발생하도록 설정 (네트워크 오류 시뮬레이션)
             when(tossPaymentClient.confirm("paymentKey-timeout", "1", new BigDecimal("10000")))
                     .thenThrow(new RuntimeException("Network timeout"));
+            
+            // idempotencyKeyService가 실제 로직을 실행하도록 설정
+            when(idempotencyKeyService.executeWithIdempotency(any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        java.util.function.Supplier<?> op = inv.getArgument(3);
+                        return op.get(); // 실제 로직 실행
+                    });
             
             // when & then
             assertThatThrownBy(() -> paymentService.approve(

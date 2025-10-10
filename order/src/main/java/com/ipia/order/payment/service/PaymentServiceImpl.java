@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 
 import com.ipia.order.common.exception.payment.PaymentHandler;
 import com.ipia.order.common.exception.payment.status.PaymentErrorStatus;
+import com.ipia.order.idempotency.service.IdempotencyKeyService;
 import com.ipia.order.order.service.OrderService;
 import com.ipia.order.payment.domain.Payment;
 import com.ipia.order.payment.service.external.TossCancelResponse;
@@ -32,6 +33,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
     private final ApplicationEventPublisher eventPublisher;
+    private final IdempotencyKeyService idempotencyKeyService;
 
     private static final long INTENT_TTL_SECONDS = 1800; // 30분
 
@@ -95,6 +97,16 @@ public class PaymentServiceImpl implements PaymentService {
         // 입력값 검증
         validateApproveParams(intentId, paymentKey, orderId, amount, idempotencyKey);
         
+        // 멱등성 처리로 결제 승인 실행
+        return idempotencyKeyService.executeWithIdempotency(
+                "POST /payments/approve",
+                idempotencyKey,
+                Long.class,
+                () -> executeApproveLogic(intentId, paymentKey, orderId, amount, idempotencyKey)
+        );
+    }
+    
+    private Long executeApproveLogic(String intentId, String paymentKey, long orderId, BigDecimal amount, String idempotencyKey) {
         // 의도 검증
         verify(intentId, paymentKey, orderId, amount, idempotencyKey);
         
