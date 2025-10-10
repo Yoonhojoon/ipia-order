@@ -22,6 +22,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.Optional;
 
@@ -81,9 +82,10 @@ public class OrderController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(
-            @Parameter(description = "주문 ID", example = "1") @PathVariable("id") Long id) {
+            @Parameter(description = "주문 ID", example = "1") @PathVariable("id") Long id,
+            @AuthenticationPrincipal(expression = "memberId") Long memberId) {
         
-        Optional<Order> orderOptional = orderService.getOrder(id);
+        Optional<Order> orderOptional = orderService.getOrder(id, memberId);
         
         if (orderOptional.isEmpty()) {
             throw new OrderHandler(OrderErrorStatus.ORDER_NOT_FOUND);

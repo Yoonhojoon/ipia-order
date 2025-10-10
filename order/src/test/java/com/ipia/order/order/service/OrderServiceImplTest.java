@@ -201,7 +201,7 @@ class OrderServiceImplTest {
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> orderService.getOrder(nonExistentOrderId))
+            assertThatThrownBy(() -> orderService.getOrder(nonExistentOrderId, 1L))
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.ORDER_NOT_FOUND.getCode());
         }
@@ -225,7 +225,7 @@ class OrderServiceImplTest {
 
             // TODO: 현재 사용자 인증 정보 Mock 설정 필요
             // when & then
-            assertThatThrownBy(() -> orderService.getOrder(orderId))
+            assertThatThrownBy(() -> orderService.getOrder(orderId, unauthorizedMemberId))
                     .isInstanceOf(OrderHandler.class)
                     .hasMessage(OrderErrorStatus.ACCESS_DENIED.getCode());
         }
