@@ -26,5 +26,5 @@ logging:
 
 toss:
   baseUrl: https://api.tosspayments.com
-  secretKey: test_sk_xxx
+  secretKey: ${TOSS_SECRETKEY}
   enableRealCall: true

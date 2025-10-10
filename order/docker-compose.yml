@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    image: yoonhojoon/ipia-order:latest
+    container_name: ipia-order-app
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - default
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: ipia-order-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "no"]
+    networks:
+      - default
+
+networks:
+  default:
+    name: ipia-order-net
+

@@ -42,7 +42,7 @@ public class OrderController {
      * 주문 생성
      * POST /api/orders
      */
-    @Operation(summary = "주문 생성", description = "새로운 주문을 생성합니다.")
+    @Operation(summary = "주문 생성", description = "새로운 주문을 생성합니다. 멱등성을 보장해, 동일한 멱등키가 요청이 들어오면 헤더에 x-idempotency 관련 헤더들이 추가됩니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "주문 생성 성공", 
                     content = @Content(schema = @Schema(implementation = OrderResponse.class))),
@@ -71,7 +71,7 @@ public class OrderController {
      * 주문 조회 (단건)
      * GET /api/orders/{id}
      */
-    @Operation(summary = "주문 단건 조회", description = "주문 ID를 통해 특정 주문 정보를 조회합니다.")
+    @Operation(summary = "주문 단건 조회", description = "주문 ID를 통해 특정 주문 정보를 조회합니다. 주문 생성한 member가 아닌 경우 접근 권한 에러를 반환합니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "주문 조회 성공", 
                     content = @Content(schema = @Schema(implementation = OrderResponse.class))),
