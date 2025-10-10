@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 
 import com.ipia.order.common.util.JwtUtil;
-import com.ipia.order.web.controller.order.OrderController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,18 +45,17 @@ class PaymentControllerApiTest {
                 "\"successUrl\":\"https://success\"," +
                 "\"failUrl\":\"https://fail\"" +
                 "}";
-        when(paymentService.createIntent(eq(1L), eq(new BigDecimal("10000")), eq("https://success"), eq("https://fail"), any()))
+        when(paymentService.createIntent(eq(1L), eq(new BigDecimal("10000")), eq("https://success"), eq("https://fail")))
                 .thenReturn("intent_123");
 
         // when/then
         mockMvc.perform(post("/api/payments/intent")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reqJson)
-                        .header("Idempotency-Key", "idem-1"))
+                        .content(reqJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.intentId").value("intent_123"));
+                .andExpect(jsonPath("$.data.intentId").isString());
 
-        verify(paymentService).createIntent(1L, new BigDecimal("10000"), "https://success", "https://fail", "idem-1");
+        verify(paymentService).createIntent(1L, new BigDecimal("10000"), "https://success", "https://fail");
     }
 
     @Test

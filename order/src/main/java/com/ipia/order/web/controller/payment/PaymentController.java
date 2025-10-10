@@ -42,14 +42,12 @@ public class PaymentController {
             @ApiErrorCodeExample(value = PaymentErrorStatus.class, codes = {"INVALID_AMOUNT", "INVALID_SUCCESS_URL", "INVALID_FAIL_URL"})
     })
     @PostMapping("/intent")
-    public ResponseEntity<ApiResponse<IntentResponse>> createIntent(@RequestBody IntentRequest request,
-                                                       @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey) {
+    public ResponseEntity<ApiResponse<IntentResponse>> createIntent(@RequestBody IntentRequest request) {
         String intentId = paymentService.createIntent(
                 request.orderId(),
                 request.amount(),
                 request.successUrl(),
-                request.failUrl(),
-                idempotencyKey
+                request.failUrl()
         );
         return ApiResponse.onSuccess(PaymentSuccessStatus.INTENT_CREATED, new IntentResponse(intentId));
     }
