@@ -45,6 +45,15 @@ ipia-order/
 
 ```
 
+## 아키텍처
+
+### 주문 생성 플로우
+<img width="3851" height="3234" alt="Order" src="https://github.com/user-attachments/assets/564bdb55-c207-4108-ae74-475566d77a51" />
+
+### 결제 승인 플로우
+<img width="4638" height="1614" alt="Payment" src="https://github.com/user-attachments/assets/a55ccbc7-e69f-4b72-a9de-b1f659209ede" />
+
+
 ### 빠른 시작 (Windows / PowerShell 기준)
 
 빠른 실행을 위해, 도커 이미지를 배포한 상태입니다.
